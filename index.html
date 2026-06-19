@@ -242,11 +242,19 @@ tr:last-child td{border-bottom:none}
       <div class="ch"><div class="ct">Detalle por tienda</div><div class="cs">clic para desglose · <span id="ct-t"></span></div></div>
       <div id="t-load" class="load"><div class="spin"></div>Cargando...</div>
       <table id="t-tiendas" style="display:none">
-        <thead><tr><th>Tienda / Colonia</th><th>Galletas</th><th class="r">Hora</th><th class="r">Entregado</th><th class="r">Restante</th><th class="r">Devuelto</th><th class="r">Vendido $</th><th class="r">Cobrado $</th><th class="r">Pagado</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Tienda / Colonia</th><th>Galletas</th><th class="r">Hora</th><th class="r">Venta normal</th><th class="r">Venta consigna</th><th class="r">Devuelto</th><th class="r">Vendido $</th><th class="r">Cobrado $</th><th class="r">Pagado</th><th>Estado</th></tr></thead>
         <tbody id="b-tiendas"></tbody>
       </table>
       <div id="det-t" style="display:none"></div>
       <div class="empty" id="e-tiendas" style="display:none">Sin datos</div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">Consignas por tienda y producto</div><div class="cs">acumulado del rango · <span id="ct-consigna-tiendas"></span></div></div>
+      <table id="t-consigna-tiendas" style="display:none">
+        <thead><tr><th>Tienda / Producto</th><th class="r">Saldo inicial</th><th class="r">Cargado en rango</th><th class="r">Vendido en rango</th><th class="r">Devuelto</th><th class="r">Saldo consigna</th><th>Estado</th></tr></thead>
+        <tbody id="b-consigna-tiendas"></tbody>
+      </table>
+      <div class="empty" id="e-consigna-tiendas" style="display:none">Sin movimientos de consigna en el rango</div>
     </div>
   </div>
 
@@ -257,6 +265,14 @@ tr:last-child td{border-bottom:none}
       <div id="p-load" class="load"><div class="spin"></div>Cargando...</div>
       <div id="p-body" class="pb" style="display:none"></div>
       <div class="empty" id="e-prod" style="display:none">Sin datos</div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct">Consignas por producto</div><div class="cs">saldo y venta acumulada del rango</div></div>
+      <table id="t-consigna-productos" style="display:none">
+        <thead><tr><th>Producto</th><th class="r">Saldo inicial</th><th class="r">Cargado en rango</th><th class="r">Vendido en rango</th><th class="r">Devuelto</th><th class="r">Saldo consigna</th></tr></thead>
+        <tbody id="b-consigna-productos"></tbody>
+      </table>
+      <div class="empty" id="e-consigna-productos" style="display:none">Sin movimientos de consigna en el rango</div>
     </div>
   </div>
 
@@ -528,7 +544,8 @@ function normalizeProductId(pid){
     'Galletas Chocolate':'GC001','Chocolate':'GC001','P001':'GC001',
     'Galletas Ate':'GA002','Ate':'GA002','P002':'GA002',
     'Galletas Nuez':'GN003','Nuez':'GN003','P003':'GN003',
-    'Galletas Alfajor':'GAL004','Alfajor':'GAL004','P004':'GAL004'
+    'Galletas Alfajor':'GAL004','Alfajor':'GAL004','P004':'GAL004',
+    'cookie_chocolate':'GC001','cookie_ate':'GA002','cookie_nuez':'GN003','cookie_alfajor':'GAL004'
   };
   return aliases[p]||p;
 }
@@ -561,6 +578,11 @@ function normalizeDetails(rows){
     const monto=num(o,'montoCobrado','amountCollected','subtotal','MONTO_COBRADO');
     const forma=val(o,'paymentMethod','formaPago','FORMA_PAGO');
     const pagado=val(o,'pagado','paid','PAGADO');
+    const consignaObjetivo=num(o,'consignaObjetivo','CONSIGNA_OBJETIVO');
+    const consignaStatus=val(o,'consignaStatus','CONSIGNA_STATUS');
+    const vendidoCalculado=num(o,'vendidoCalculado','VENDIDO_CALCULADO');
+    const esConsigna=!!consignaStatus||consignaObjetivo>0;
+    const vendido=esConsigna?vendidoCalculado:Math.max(0,ent-dev);
     return {
       DETALLE_ID: val(o,'detailId','DETALLE_ID','id'),
       VISITA_ID: val(o,'visitId','VISITA_ID'),
@@ -573,11 +595,92 @@ function normalizeDetails(rows){
       ENTREGADO: ent,
       DEVOLUCION: dev,
       INV_FINAL: num(o,'invFinal','availableAfter','INV_FINAL'),
-      MONTO_COBRADO: monto || (ent*PX),
+      MONTO_COBRADO: monto || (vendido*PX),
       FORMA_PAGO: forma,
-      PAGADO: boolSi(pagado) || (forma && String(forma).toUpperCase()!=='PENDIENTE') ? 'Sí':'No'
+      PAGADO: boolSi(pagado) || (forma && String(forma).toUpperCase()!=='PENDIENTE') ? 'Sí':'No',
+      CONSIGNA_OBJETIVO: consignaObjetivo,
+      EXISTENCIA_ENCONTRADA: num(o,'existenciaEncontrada','EXISTENCIA_ENCONTRADA'),
+      VENDIDO_CALCULADO: vendidoCalculado,
+      REPOSICION_SUGERIDA: num(o,'reposicionSugerida','REPOSICION_SUGERIDA'),
+      CANTIDAD_REPUESTA: num(o,'cantidadRepuesta','CANTIDAD_REPUESTA'),
+      CONSIGNA_FINAL: num(o,'consignaFinal','CONSIGNA_FINAL'),
+      CONSIGNA_STATUS: consignaStatus,
+      CREATED_AT: num(o,'createdAt','CREATED_AT')
     }
   }).filter(o=>o.VISITA_ID||o.TIENDA_ID||o.PRODUCTO_ID);
+}
+
+const esDetalleConsigna=d=>{
+  if(money(d.CONSIGNA_OBJETIVO)>0)return true;
+  const hasStatus=!!String(d.CONSIGNA_STATUS||'').trim();
+  const hasMovement=money(d.EXISTENCIA_ENCONTRADA)>0||money(d.VENDIDO_CALCULADO)>0||money(d.CANTIDAD_REPUESTA)>0||money(d.CONSIGNA_FINAL)>0;
+  return hasStatus&&hasMovement;
+};
+const vendidoDetalle=d=>esDetalleConsigna(d)?Math.max(0,money(d.VENDIDO_CALCULADO)):Math.max(0,money(d.ENTREGADO)-money(d.DEVOLUCION));
+const entregadoDetalle=d=>esDetalleConsigna(d)?Math.max(0,money(d.CANTIDAD_REPUESTA)):Math.max(0,money(d.ENTREGADO));
+
+function buildConsignmentSummary(inicio,fin,routeId,repartidorId){
+  const visitas={};
+  dV.forEach(v=>{if(v.VISITA_ID)visitas[v.VISITA_ID]=v});
+  const groups={};
+  dD.forEach(detail=>{
+    if(!esDetalleConsigna(detail))return;
+    const visita=visitas[detail.VISITA_ID]||{};
+    const fecha=normFecha(detail.FECHA)||normFecha(visita.FECHA);
+    const ruta=detail.RUTA_ID||visita.RUTA_ID||'';
+    const repartidor=detail.REPARTIDOR_ID||visita.REPARTIDOR_ID||'';
+    const tienda=detail.TIENDA_ID||visita.TIENDA_ID||'';
+    const producto=detail.PRODUCTO_ID||'';
+    if(!fecha||!tienda||!producto)return;
+    if(routeId&&ruta!==routeId)return;
+    if(repartidorId&&repartidor!==repartidorId)return;
+    const key=`${tienda}|${producto}`;
+    if(!groups[key])groups[key]={key,tiendaId:tienda,productoId:producto,records:[]};
+    groups[key].records.push({...detail,FECHA:fecha,RUTA_ID:ruta,REPARTIDOR_ID:repartidor,TIENDA_ID:tienda});
+  });
+
+  const entries=[];
+  Object.values(groups).forEach(group=>{
+    const sorted=group.records.sort((a,b)=>a.FECHA.localeCompare(b.FECHA)||money(a.CREATED_AT)-money(b.CREATED_AT));
+    const period=sorted.filter(d=>fechaEnRango(d.FECHA,inicio,fin));
+    if(!period.length)return;
+    const before=inicio?sorted.filter(d=>d.FECHA<inicio):[];
+    const previous=before[before.length-1];
+    const first=period[0];
+    const impliedOpening=Math.max(0,money(first.CONSIGNA_FINAL)-money(first.CANTIDAD_REPUESTA)+vendidoDetalle(first)+money(first.DEVOLUCION));
+    const opening=previous?Math.max(0,money(previous.CONSIGNA_FINAL)):impliedOpening;
+    const loaded=period.reduce((sum,d)=>sum+entregadoDetalle(d),0);
+    const sold=period.reduce((sum,d)=>sum+vendidoDetalle(d),0);
+    const returned=period.reduce((sum,d)=>sum+Math.max(0,money(d.DEVOLUCION)),0);
+    const delivered=opening+loaded;
+    const pending=Math.max(0,delivered-sold-returned);
+    entries.push({
+      tiendaId:group.tiendaId,
+      productoId:group.productoId,
+      opening,
+      loaded,
+      delivered,
+      sold,
+      returned,
+      pending,
+      newInPeriod:!previous&&opening===0&&loaded>0,
+      movements:period.length
+    });
+  });
+
+  const byProduct={};
+  entries.forEach(entry=>{
+    const pid=entry.productoId;
+    if(!byProduct[pid])byProduct[pid]={productoId:pid,opening:0,loaded:0,delivered:0,sold:0,returned:0,pending:0,stores:0};
+    byProduct[pid].opening+=entry.opening;
+    byProduct[pid].loaded+=entry.loaded;
+    byProduct[pid].delivered+=entry.delivered;
+    byProduct[pid].sold+=entry.sold;
+    byProduct[pid].returned+=entry.returned;
+    byProduct[pid].pending+=entry.pending;
+    byProduct[pid].stores+=1;
+  });
+  return {entries,byProduct};
 }
 
 function normalizeInventory(rows){
@@ -779,7 +882,7 @@ function ventasPorRepartidorData(){
     const v=visitaPorId[d.VISITA_ID];
     if(!v)return;
     const gr=ensure(v.FECHA,v.REPARTIDOR_ID,v.RUTA_ID);
-    const pid=d.PRODUCTO_ID||'Sin producto',ent=money(d.ENTREGADO),dev=money(d.DEVOLUCION),vend=Math.max(0,ent-dev),importe=vend*PX;
+    const pid=d.PRODUCTO_ID||'Sin producto',ent=entregadoDetalle(d),dev=money(d.DEVOLUCION),vend=vendidoDetalle(d),importe=vend*PX;
     if(!gr.productos[pid])gr.productos[pid]={productoId:pid,entregado:0,vendido:0,devolucion:0,importe:0};
     gr.productos[pid].entregado+=ent;gr.productos[pid].vendido+=vend;gr.productos[pid].devolucion+=dev;gr.productos[pid].importe+=importe;
     gr.totalVendido+=importe;gr.devoluciones+=dev;
@@ -788,7 +891,7 @@ function ventasPorRepartidorData(){
     gr.visitas.forEach(v=>{
       const tieneSeparado=money(v.EFECTIVO)||money(v.TRANSFERENCIA)||money(v.PENDIENTE);
       if(tieneSeparado){gr.efectivo+=money(v.EFECTIVO);gr.transferencia+=money(v.TRANSFERENCIA);gr.pendiente+=money(v.PENDIENTE);return}
-      const totalVisita=dD.filter(d=>d.VISITA_ID===v.VISITA_ID).reduce((s,d)=>s+Math.max(0,money(d.ENTREGADO)-money(d.DEVOLUCION))*PX,0);
+      const totalVisita=dD.filter(d=>d.VISITA_ID===v.VISITA_ID).reduce((s,d)=>s+vendidoDetalle(d)*PX,0);
       gr[paymentType(v)]+=totalVisita;
     });
     if(gr.corte){
@@ -894,8 +997,8 @@ function renderizar(){
   });
   let tEnt=0,tVend=0,tFin=0,tDev=0,tCob=0,tPend=0;
   det.forEach(d=>{
-    const ini=+d.INV_INICIAL||0,ent=+d.ENTREGADO||0,dev=+d.DEVOLUCION||0,fin=+d.INV_FINAL||0;
-    tEnt+=ent;tVend+=(ent-dev);tFin+=fin;tDev+=dev;tCob+=+d.MONTO_COBRADO||0;
+    const ent=entregadoDetalle(d),vend=vendidoDetalle(d),dev=money(d.DEVOLUCION),fin=money(d.INV_FINAL);
+    tEnt+=ent;tVend+=vend;tFin+=fin;tDev+=dev;tCob+=+d.MONTO_COBRADO||0;
     const pagado=d.PAGADO==='Sí'||d.PAGADO==='Si'||d.PAGADO==='1';
     if(!pagado)tPend+=+d.MONTO_COBRADO||0;
   });
@@ -914,7 +1017,8 @@ function renderizar(){
   g('m-d').textContent=tDev;g('m-ds').textContent=fp(tDev*PX)+' valor';
   g('m-pend').textContent=fp(tPend);g('m-pends').textContent=nTiendasPend?`${nTiendasPend} tienda${nTiendasPend>1?'s':''} sin pagar`:'todo cobrado';
   g('m-a').textContent=pct+'%';g('m-as').textContent=`${vIds.size} tiendas`;
-  renderRutas(det);renderTiendas(det);renderProductos(det);renderCarga();renderCorte();renderVentasPorRepartidor();renderCalendarioRutas();
+  const consignments=buildConsignmentSummary(inicio,fin,rf,rep);
+  renderRutas(det);renderTiendas(det);renderProductos(det);renderConsignments(consignments);renderCarga();renderCorte();renderVentasPorRepartidor();renderCalendarioRutas();
   renderComparativo(rf,inicio,fin,pV);renderTiendasPendientes(rf,inicio,fin,vIds);
 }
 
@@ -932,10 +1036,7 @@ function renderComparativo(rf,inicio,fin,vendHoy){
   if(rep)visPrev=visPrev.filter(v=>v.REPARTIDOR_ID===rep);
   const vIdsPrev=new Set(visPrev.map(v=>v.VISITA_ID));
   let vendPrevPaq=0;
-  dD.filter(d=>vIdsPrev.has(d.VISITA_ID)).forEach(d=>{
-    const ini=+d.INV_INICIAL||0,ent=+d.ENTREGADO||0,dev=+d.DEVOLUCION||0,fin=+d.INV_FINAL||0;
-    vendPrevPaq+=(ent-dev);
-  });
+  dD.filter(d=>vIdsPrev.has(d.VISITA_ID)).forEach(d=>{vendPrevPaq+=vendidoDetalle(d)});
   const vendPrev=vendPrevPaq*PX;
   g('comp-prev-lbl').textContent=etiquetaRango(inicioPrevStr,finPrevStr);
   g('comp-hoy').textContent=fp(vendHoy);
@@ -1024,19 +1125,20 @@ function renderTiendas(det){
   dV.forEach(v=>{if(visitasVisibles.has(v.VISITA_ID)&&v.TIENDA_ID&&v.HORA_LLEGADA)horaMap[v.TIENDA_ID]=v.HORA_LLEGADA});
   det.forEach(d=>{
     const tid=d.TIENDA_ID||'?';
-    if(!por[tid])por[tid]={ini:0,ent:0,dev:0,fin:0,cob:0,pag:0,prods:[],hora:''};
-    por[tid].ini+=+d.INV_INICIAL||0;por[tid].ent+=+d.ENTREGADO||0;
-    por[tid].dev+=+d.DEVOLUCION||0;por[tid].fin+=+d.INV_FINAL||0;
+    if(!por[tid])por[tid]={normalSold:0,consignmentSold:0,dev:0,cob:0,pag:0,prods:[],hora:''};
+    if(esDetalleConsigna(d))por[tid].consignmentSold+=vendidoDetalle(d);
+    else por[tid].normalSold+=vendidoDetalle(d);
+    por[tid].dev+=money(d.DEVOLUCION);
     por[tid].cob+=+d.MONTO_COBRADO||0;
     if(!por[tid].hora&&horaMap[tid])por[tid].hora=horaMap[tid];
     if(d.PAGADO==='Sí'||d.PAGADO==='Si'||d.PAGADO==='1')por[tid].pag=1;
     if(d.PRODUCTO_ID)por[tid].prods.push(d.PRODUCTO_ID);
   });
-  const filas=Object.entries(por).sort((a,b)=>b[1].ent-a[1].ent);
+  const filas=Object.entries(por).sort((a,b)=>(b[1].normalSold+b[1].consignmentSold)-(a[1].normalSold+a[1].consignmentSold));
   g('ct-t').textContent=filas.length+' tiendas';
   if(!filas.length){g('e-tiendas').style.display='block';return}
   filas.forEach(([tid,t])=>{
-    const vend=t.ent-t.dev;
+    const vend=t.normalSold+t.consignmentSold;
     const vendPesos=vend*PX;
     const dif=+(t.cob-vendPesos).toFixed(2);
     const info=dT[tid]||{nombre:tid,municipio:'',colonia:''};
@@ -1051,7 +1153,7 @@ function renderTiendas(det){
     const tr=document.createElement('tr');tr.className='trc';tr.dataset.est=est;
     tr.onclick=()=>abrirDet(tr,tid,info.nombre,t,vend,dif,cnt);
     const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:`<span style="color:var(--text3)">—</span>`;
-    tr.innerHTML=`<td><div class="tn">${info.nombre}</div><div class="tm">${info.colonia||info.municipio}</div></td><td>${tags||'—'}</td><td class="r">${horaStr}</td><td class="r">${t.ent}</td><td class="r" style="color:var(--amber)">${t.fin}</td><td class="r" style="color:var(--red)">${t.dev}</td><td class="r" style="color:var(--green)">${fp(vendPesos)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td class="r">${pagB}</td><td>${pill}</td>`;
+    tr.innerHTML=`<td><div class="tn">${info.nombre}</div><div class="tm">${info.colonia||info.municipio}</div></td><td>${tags||'—'}</td><td class="r">${horaStr}</td><td class="r">${t.normalSold}</td><td class="r" style="color:var(--purple)">${t.consignmentSold}</td><td class="r" style="color:var(--red)">${t.dev}</td><td class="r" style="color:var(--green)">${fp(vendPesos)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td class="r">${pagB}</td><td>${pill}</td>`;
     tbody.appendChild(tr);
   });
   g('t-tiendas').style.display='table';
@@ -1066,9 +1168,10 @@ function abrirDet(row,tid,nombre,t,vend,dif,cnt){
   const dc=Math.abs(dif)<0.01?'var(--green)':Math.abs(dif)<=2?'var(--amber)':'var(--red)';
   det.innerHTML=`<div class="det"><div class="det-t">${nombre}</div><div class="det-g">
     <div class="det-i"><label>Galletas</label><div style="margin-top:6px;line-height:2">${tags}</div></div>
-    <div class="det-i"><label>Entregado</label><span style="color:var(--blue)">${t.ent} paq · ${fp(t.ent*PX)}</span></div>
+    <div class="det-i"><label>Venta normal</label><span style="color:var(--blue)">${t.normalSold} pzas · ${fp(t.normalSold*PX)}</span></div>
+    <div class="det-i"><label>Venta de consigna</label><span style="color:var(--purple)">${t.consignmentSold} pzas · ${fp(t.consignmentSold*PX)}</span></div>
     <div class="det-i"><label>Devuelto</label><span style="color:var(--amber)">${t.dev} paq · ${fp(t.dev*PX)}</span></div>
-    <div class="det-i"><label>Vendido (ent − dev)</label><span style="color:var(--green)">${vend} paq · ${fp(vend*PX)}</span></div>
+    <div class="det-i"><label>Vendido total</label><span style="color:var(--green)">${vend} pzas · ${fp(vend*PX)}</span></div>
     <div class="det-i"><label>Cobrado</label><span style="color:var(--blue)">${fp(t.cob)}</span></div>
     <div class="det-i"><label>Diferencia (cob − vend)</label><span style="color:${dc}">${Math.abs(dif)<0.01?'$0.00 ✓':(dif>0?'+':'')+fp(dif)}</span></div>
   </div></div>`;
@@ -1085,9 +1188,10 @@ function renderProductos(det){
   g('p-load').style.display='none';g('falt-load').style.display='none';
   const por={};
   det.forEach(d=>{
-    const pid=d.PRODUCTO_ID||'?';if(!por[pid])por[pid]={ent:0,vend:0,fin:0,dev:0};
-    const ini=+d.INV_INICIAL||0,ent=+d.ENTREGADO||0,dev=+d.DEVOLUCION||0,fin=+d.INV_FINAL||0;
-    por[pid].ent+=ent;por[pid].vend+=(ent-dev);por[pid].fin+=fin;por[pid].dev+=dev;
+    const pid=d.PRODUCTO_ID||'?';if(!por[pid])por[pid]={ent:0,vend:0,normal:0,consigna:0,fin:0,dev:0};
+    const ent=entregadoDetalle(d),vend=vendidoDetalle(d),dev=money(d.DEVOLUCION),fin=money(d.INV_FINAL);
+    por[pid].ent+=ent;por[pid].vend+=vend;por[pid].fin+=fin;por[pid].dev+=dev;
+    if(esDetalleConsigna(d))por[pid].consigna+=vend;else por[pid].normal+=vend;
   });
   const prods=Object.entries(por).sort((a,b)=>b[1].vend-a[1].vend);
   const pm=g('pmets');pm.innerHTML='';
@@ -1101,17 +1205,47 @@ function renderProductos(det){
   prods.forEach(([pid,p])=>{
     const col=PCOL[pid]||'var(--green)',nom=PNOM[pid]||pid;
     const pct=p.ent>0?Math.round((p.vend/p.ent)*100):0;
+    const pctWidth=Math.min(100,pct);
     pb.innerHTML+=`<div class="pr"><div class="pn">${nom}</div><div class="pw">
-      <div class="ph"><span>${p.vend} vendidos de ${p.ent} entregados</span><span style="color:${col};font-weight:700">${pct}%</span></div>
-      <div class="pt"><div class="pf" style="width:${pct}%;background:${col}"></div></div>
-      <div class="pfoot"><span>${fp(p.vend*PX)}</span><span>${fp(p.ent*PX)} meta</span><span class="pfalt">${p.fin} falt · ${fp(p.fin*PX)}</span><span class="pdev">${p.dev} dev · ${fp(p.dev*PX)}</span></div>
+      <div class="ph"><span>${p.vend} vendidos en el rango</span><span style="color:${col};font-weight:700">${pct}%</span></div>
+      <div class="pt"><div class="pf" style="width:${pctWidth}%;background:${col}"></div></div>
+      <div class="pfoot"><span>${fp(p.vend*PX)}</span><span>${p.normal} venta normal</span><span style="color:var(--purple)">${p.consigna} consigna</span><span class="pdev">${p.dev} dev.</span></div>
     </div></div>`;
     fb.innerHTML+=`<div class="pr"><div class="pn">${PSHORT[pid]||pid}</div><div class="pw">
-      <div class="pt"><div class="pf" style="width:${pct}%;background:${col}"></div></div>
+      <div class="pt"><div class="pf" style="width:${pctWidth}%;background:${col}"></div></div>
       <div class="pfoot"><span>${p.vend} vend.</span><span class="pfalt">${p.fin} falt · ${fp(p.fin*PX)}</span><span class="pdev">${p.dev} dev.</span></div>
     </div></div>`;
   });
   pb.style.display='block';fb.style.display='block';
+}
+
+function renderConsignments(summary){
+  const storeTable=g('t-consigna-tiendas'),storeBody=g('b-consigna-tiendas'),storeEmpty=g('e-consigna-tiendas');
+  const productTable=g('t-consigna-productos'),productBody=g('b-consigna-productos'),productEmpty=g('e-consigna-productos');
+  storeBody.innerHTML='';productBody.innerHTML='';
+  const entries=[...(summary.entries||[])].sort((a,b)=>{
+    const storeCompare=storeInfo(a.tiendaId).nombre.localeCompare(storeInfo(b.tiendaId).nombre);
+    return storeCompare||productName(a.productoId).localeCompare(productName(b.productoId));
+  });
+  g('ct-consigna-tiendas').textContent=`${entries.length} tienda-producto`;
+  entries.forEach(entry=>{
+    const info=storeInfo(entry.tiendaId);
+    const state=entry.newInPeriod?'<span class="badge bblue">Nueva del periodo</span>':'<span class="badge bok">En curso</span>';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><div class="tn">${esc(info.nombre||entry.tiendaId)}</div><div class="tm">${esc(productName(entry.productoId))}</div></td><td class="r">${entry.opening}</td><td class="r" style="color:var(--blue)">${entry.loaded}</td><td class="r" style="color:var(--green)">${entry.sold}</td><td class="r" style="color:var(--amber)">${entry.returned}</td><td class="r" style="color:${entry.pending>0?'var(--purple)':'var(--green)'}">${entry.pending}</td><td>${state}</td>`;
+    storeBody.appendChild(tr);
+  });
+  storeTable.style.display=entries.length?'table':'none';
+  storeEmpty.style.display=entries.length?'none':'block';
+
+  const products=Object.values(summary.byProduct||{}).sort((a,b)=>b.sold-a.sold||productName(a.productoId).localeCompare(productName(b.productoId)));
+  products.forEach(product=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><div class="tn">${esc(productName(product.productoId))}</div><div class="tm">${product.stores} tienda${product.stores===1?'':'s'}</div></td><td class="r">${product.opening}</td><td class="r" style="color:var(--blue)">${product.loaded}</td><td class="r" style="color:var(--green)">${product.sold}</td><td class="r" style="color:var(--amber)">${product.returned}</td><td class="r" style="color:${product.pending>0?'var(--purple)':'var(--green)'}">${product.pending}</td>`;
+    productBody.appendChild(tr);
+  });
+  productTable.style.display=products.length?'table':'none';
+  productEmpty.style.display=products.length?'none':'block';
 }
 
 
@@ -1139,7 +1273,7 @@ function renderCarga(){
   detallesFiltrados.forEach(d=>{
     const pid=d.PRODUCTO_ID;if(!pid)return;
     if(!entProd[pid])entProd[pid]=0;
-    entProd[pid]+=+d.ENTREGADO||0;
+    entProd[pid]+=entregadoDetalle(d);
   });
 
   // Agrupar carga por producto
@@ -1362,7 +1496,7 @@ function exportarExcel(){
 
   let totalVendido=0,totalEfectivo=0,totalTransfer=0,totalPendiente=0,totalMermaDev=0;
   ctx.detalles.forEach(d=>{
-    const ent=money(d.ENTREGADO),dev=money(d.DEVOLUCION),vend=Math.max(0,ent-dev);
+    const dev=money(d.DEVOLUCION),vend=vendidoDetalle(d);
     const total=+(vend*PX).toFixed(2);
     const forma=formaPagoTipo(d.FORMA_PAGO);
     const pagado=estaPagado(d);
@@ -1407,7 +1541,7 @@ function exportarExcel(){
   ctx.detalles.forEach(d=>{
     const info=storeInfo(d.TIENDA_ID);
     const corte=cortesPorGrupo[repKey(d.FECHA,d.REPARTIDOR_ID,d.RUTA_ID)]||{};
-    const ent=money(d.ENTREGADO),dev=money(d.DEVOLUCION),vend=Math.max(0,ent-dev);
+    const ent=entregadoDetalle(d),dev=money(d.DEVOLUCION),vend=vendidoDetalle(d);
     const total=+(vend*PX).toFixed(2);
     const formaTxt=d.FORMA_PAGO||'';
     const forma=formaPagoTipo(formaTxt);
@@ -1435,8 +1569,7 @@ function exportarExcel(){
     if(estaPagado(d)&&forma!=='pendiente')return;
     const tid=d.TIENDA_ID||'',key=repKey(d.FECHA,d.REPARTIDOR_ID,d.RUTA_ID)+'|'+tid;
     if(!pendPorTienda[key])pendPorTienda[key]={tid,fecha:d.FECHA||ctx.fecha,ruta:d.RUTA_ID||'',rep:d.REPARTIDOR_ID||'',monto:0,motivo:d.PENDING_REASON||'',obs:d.PENDING_NOTE||'',prods:new Set(),estado:d.ESTADO_TIENDA||''};
-    const ent=money(d.ENTREGADO),dev=money(d.DEVOLUCION);
-    pendPorTienda[key].monto+=Math.max(0,ent-dev)*PX;
+    pendPorTienda[key].monto+=vendidoDetalle(d)*PX;
     if(d.PRODUCTO_ID)pendPorTienda[key].prods.add(productName(d.PRODUCTO_ID));
   });
   Object.values(pendPorTienda).forEach(p=>{
@@ -1479,7 +1612,7 @@ function exportarExcel(){
   const entInv={},devInv={};
   ctx.detalles.forEach(d=>{
     const key=`${d.REPARTIDOR_ID||''}|${d.RUTA_ID||''}|${d.PRODUCTO_ID||''}`;
-    entInv[key]=(entInv[key]||0)+money(d.ENTREGADO);
+    entInv[key]=(entInv[key]||0)+entregadoDetalle(d);
     devInv[key]=(devInv[key]||0)+money(d.DEVOLUCION);
   });
   const invHighlights=[];
@@ -1494,7 +1627,7 @@ function exportarExcel(){
     if(merma>0||dev>0||estado==='Revisar')invHighlights.push({row:invRows.length-1,type:estado==='Revisar'?'bad':'warn'});
   });
   const totalRowInv=invRows.length;
-  invRows.push(['TOTALES','','','',ctx.inventario.reduce((s,c)=>s+money(c.CARGA_INICIAL),0),ctx.detalles.reduce((s,d)=>s+money(d.ENTREGADO),0),ctx.inventario.reduce((s,c)=>s+money(c.MERMA),0),ctx.detalles.reduce((s,d)=>s+money(d.DEVOLUCION),0),'','','']);
+  invRows.push(['TOTALES','','','',ctx.inventario.reduce((s,c)=>s+money(c.CARGA_INICIAL),0),ctx.detalles.reduce((s,d)=>s+entregadoDetalle(d),0),ctx.inventario.reduce((s,c)=>s+money(c.MERMA),0),ctx.detalles.reduce((s,d)=>s+money(d.DEVOLUCION),0),'','','']);
   const wsInv=sheetFromRows(invRows,{totalRows:[totalRowInv],highlight:invHighlights});
   XLSX.utils.book_append_sheet(wb,wsInv,'Inventario');
 
