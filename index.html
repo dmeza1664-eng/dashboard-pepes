@@ -160,7 +160,8 @@ tr:last-child td{border-bottom:none}
 </header>
 
 <div class="filtros">
-  <div class="fg"><span class="fl">Fecha</span><input type="date" id="f-fecha" onchange="cargarDatos()"></div>
+  <div class="fg"><span class="fl">Desde</span><input type="date" id="f-fecha-inicio" onchange="actualizarRangoFechas('inicio')"></div>
+  <div class="fg"><span class="fl">Hasta</span><input type="date" id="f-fecha-fin" onchange="actualizarRangoFechas('fin')"></div>
   <div class="fg"><span class="fl">Ruta</span><select id="f-ruta" onchange="renderizar()"><option value="">Todas las rutas</option></select></div>
   <div class="fg"><span class="fl">Repartidor</span><select id="f-repartidor" onchange="renderizar()"><option value="">Todos los repartidores</option></select></div>
   <div class="fg"><span class="fl">Estado corte</span><select id="f-corte" onchange="renderizar()"><option value="">Todos</option><option value="abierto">Abierto</option><option value="cerrado">Cerrado</option><option value="cuadra">Cuadra</option><option value="no-cuadra">No cuadra</option></select></div>
@@ -364,7 +365,16 @@ const g=id=>document.getElementById(id);
 const val=(o,...ks)=>{for(const k of ks){if(o&&o[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k]}return ''};
 const num=(o,...ks)=>money(val(o,...ks));
 const boolSi=v=>v===true||v==='true'||v==='1'||v===1||String(v||'').toLowerCase()==='sí'||String(v||'').toLowerCase()==='si';
-const fechaSeleccionada=()=>normFecha(g('f-fecha')?.value||'');
+const rangoFechasSeleccionado=()=>({
+  inicio:normFecha(g('f-fecha-inicio')?.value||''),
+  fin:normFecha(g('f-fecha-fin')?.value||'')
+});
+const fechaEnRango=(valor,inicio,fin)=>{
+  const fecha=normFecha(valor);
+  if(!fecha)return false;
+  return (!inicio||fecha>=inicio)&&(!fin||fecha<=fin);
+};
+const etiquetaRango=(inicio,fin)=>inicio&&fin?(inicio===fin?fd(inicio):`${fd(inicio)} - ${fd(fin)}`):(inicio?`Desde ${fd(inicio)}`:fin?`Hasta ${fd(fin)}`:'Todos los días');
 const fechaLocalISO=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 const fechasDe=rows=>[...new Set((rows||[]).map(o=>normFecha(o.FECHA||o.date||o.fecha)).filter(Boolean))].sort();
 const fechasConDatos=()=>[...new Set([...fechasDe(dV),...fechasDe(dC),...fechasDe(dCC),...fechasDe(dD)])].sort();
@@ -374,25 +384,35 @@ const driverName=rid=>(dU[rid]&&dU[rid].nombre)||rid||'Sin repartidor';
 function seleccionarFechaConDatos(fecha){
   const f=normFecha(fecha);
   if(!f)return;
-  g('f-fecha').value=f;
+  g('f-fecha-inicio').value=f;
+  g('f-fecha-fin').value=f;
   renderizar();
 }
-function logFechasFiltro(fechaVisual,fechaNormalizada){
-  console.log('fecha visual:',fechaVisual);
-  console.log('fecha normalizada usada para filtrar:',fechaNormalizada||'(sin filtro)');
+function actualizarRangoFechas(origen){
+  const inicioInput=g('f-fecha-inicio'),finInput=g('f-fecha-fin');
+  const inicio=normFecha(inicioInput?.value||''),fin=normFecha(finInput?.value||'');
+  if(inicio&&fin&&inicio>fin){
+    if(origen==='inicio')finInput.value=inicio;
+    else inicioInput.value=fin;
+  }
+  renderizar();
+}
+function logFechasFiltro(fechaVisual,inicio,fin){
+  console.log('rango visual:',fechaVisual);
+  console.log('rango normalizado usado para filtrar:',{inicio:inicio||null,fin:fin||null});
   console.log('fechas encontradas en visits:',fechasDe(dV));
   console.log('fechas encontradas en routeInventories:',fechasDe(dC));
   console.log('fechas encontradas en cashCuts:',fechasDe(dCC));
 }
-function actualizarAyudaFecha(fechaNormalizada){
+function actualizarAyudaFecha(inicio,fin){
   const el=g('fecha-ayuda');
   if(!el)return;
   const fechas=fechasConDatos();
   const hayDocs=dV.length||dC.length||dCC.length||dD.length;
-  const hayFecha=!fechaNormalizada||fechas.includes(fechaNormalizada);
-  if(hayDocs&&fechaNormalizada&&!hayFecha){
+  const hayFecha=fechas.some(fecha=>fechaEnRango(fecha,inicio,fin));
+  if(hayDocs&&(inicio||fin)&&!hayFecha){
     const sugerida=fechas[fechas.length-1]||'';
-    el.innerHTML=`Hay datos en Firebase, pero no para la fecha seleccionada.${sugerida?` <button class="btn" style="padding:3px 8px;font-size:10px;margin-left:8px" onclick="seleccionarFechaConDatos('${sugerida}')">Usar ${fd(sugerida)}</button>`:''}`;
+    el.innerHTML=`Hay datos en Firebase, pero no para el rango seleccionado.${sugerida?` <button class="btn" style="padding:3px 8px;font-size:10px;margin-left:8px" onclick="seleccionarFechaConDatos('${sugerida}')">Usar ${fd(sugerida)}</button>`:''}`;
     el.style.display='inline';
   }else{
     el.style.display='none';
@@ -707,8 +727,8 @@ function paymentType(v){
 }
 
 function ventasPorRepartidorData(){
-  const fecha=fechaSeleccionada(),ruta=g('f-ruta').value,rep=g('f-repartidor').value,estadoFiltro=g('f-corte').value;
-  const base=o=>(!fecha||normFecha(o.FECHA)===fecha)&&(!ruta||o.RUTA_ID===ruta)&&(!rep||o.REPARTIDOR_ID===rep);
+  const {inicio,fin}=rangoFechasSeleccionado(),ruta=g('f-ruta').value,rep=g('f-repartidor').value,estadoFiltro=g('f-corte').value;
+  const base=o=>fechaEnRango(o.FECHA,inicio,fin)&&(!ruta||o.RUTA_ID===ruta)&&(!rep||o.REPARTIDOR_ID===rep);
   const visitas=dV.filter(base);
   const visitaPorId={};visitas.forEach(v=>{if(v.VISITA_ID)visitaPorId[v.VISITA_ID]=v});
   const huérfanos=dD.filter(d=>d.VISITA_ID&&!dV.some(v=>v.VISITA_ID===d.VISITA_ID));
@@ -717,7 +737,7 @@ function ventasPorRepartidorData(){
   const groups={};
   const ensure=(f,rid,rutaId)=>{
     const key=repKey(f,rid,rutaId);
-    if(!groups[key])groups[key]={key,fecha:normFecha(f)||fecha||'',repartidorId:rid||'',ruta:rutaId||'',visitas:[],productos:{},totalVendido:0,efectivo:0,transferencia:0,pendiente:0,devoluciones:0,carga:false,corte:null};
+    if(!groups[key])groups[key]={key,fecha:normFecha(f)||inicio||fin||'',repartidorId:rid||'',ruta:rutaId||'',visitas:[],productos:{},totalVendido:0,efectivo:0,transferencia:0,pendiente:0,devoluciones:0,carga:false,corte:null};
     return groups[key];
   };
   visitas.forEach(v=>{ensure(v.FECHA,v.REPARTIDOR_ID,v.RUTA_ID).visitas.push(v)});
@@ -775,11 +795,11 @@ function renderVentasPorRepartidor(){
 }
 
 function calendarioRutasData(){
-  const fecha=fechaSeleccionada(),rf=g('f-ruta').value,rep=g('f-repartidor').value;
+  const {inicio,fin}=rangoFechasSeleccionado(),rf=g('f-ruta').value,rep=g('f-repartidor').value;
   const grupos={};
   const ensure=(f,rid,ruta)=>{
     if(!f||!rid||!ruta)return null;
-    if(fecha&&normFecha(f)!==fecha)return null;
+    if(!fechaEnRango(f,inicio,fin))return null;
     if(rf&&ruta!==rf)return null;
     if(rep&&rid!==rep)return null;
     const key=repKey(f,rid,ruta);
@@ -817,24 +837,26 @@ function renderCalendarioRutas(){
 }
 
 function renderizar(){
-  const rf=g('f-ruta').value,fecha=fechaSeleccionada(),rep=g('f-repartidor').value;
-  const fechaVisual=fecha?fd(fecha):'Todos los días';
+  const rf=g('f-ruta').value,{inicio,fin}=rangoFechasSeleccionado(),rep=g('f-repartidor').value;
+  const fechaVisual=etiquetaRango(inicio,fin);
   g('hdr-date').textContent=fechaVisual;
-  logFechasFiltro(fechaVisual,fecha);
-  actualizarAyudaFecha(fecha);
+  logFechasFiltro(fechaVisual,inicio,fin);
+  actualizarAyudaFecha(inicio,fin);
   let vis=dV;
   if(rf)vis=vis.filter(v=>v.RUTA_ID===rf);
   if(rep)vis=vis.filter(v=>v.REPARTIDOR_ID===rep);
-  if(fecha)vis=vis.filter(v=>normFecha(v.FECHA)===fecha);
+  vis=vis.filter(v=>fechaEnRango(v.FECHA,inicio,fin));
   const vIds=new Set(vis.map(v=>v.VISITA_ID));
+  const todasLasVisitas={};dV.forEach(v=>{if(v.VISITA_ID)todasLasVisitas[v.VISITA_ID]=v});
   const vMap={};vis.forEach(v=>{vMap[v.VISITA_ID]={tienda:v.TIENDA_ID,ruta:v.RUTA_ID}});
   let det=dD.filter(d=>{
-    if(!rf&&!fecha)return true;
+    if(!rf&&!inicio&&!fin)return true;
+    if(d.VISITA_ID&&todasLasVisitas[d.VISITA_ID])return !!vMap[d.VISITA_ID];
     const visita=vMap[d.VISITA_ID];
     const rutaDetalle=d.RUTA_ID||(visita&&visita.ruta)||'';
     const fechaDetalle=normFecha(d.FECHA);
     const okRuta=!rf||rutaDetalle===rf;
-    const okFecha=!fecha||fechaDetalle===fecha||!!visita;
+    const okFecha=fechaEnRango(fechaDetalle,inicio,fin)||!!visita;
     return okRuta&&okFecha;
   });
   det=det.map(d=>{
@@ -865,17 +887,18 @@ function renderizar(){
   g('m-pend').textContent=fp(tPend);g('m-pends').textContent=nTiendasPend?`${nTiendasPend} tienda${nTiendasPend>1?'s':''} sin pagar`:'todo cobrado';
   g('m-a').textContent=pct+'%';g('m-as').textContent=`${vIds.size} tiendas`;
   renderRutas(det);renderTiendas(det);renderProductos(det);renderCarga();renderCorte();renderVentasPorRepartidor();renderCalendarioRutas();
-  renderComparativo(rf,fecha,pV);renderTiendasPendientes(rf,fecha,vIds);
+  renderComparativo(rf,inicio,fin,pV);renderTiendasPendientes(rf,inicio,fin,vIds);
 }
 
-function renderComparativo(rf,fecha,vendHoy){
-  // Calcula vendido del mismo día de la semana de hace 7 días
-  if(!fecha){g('comp-prev-lbl').textContent='—';g('comp-hoy').textContent=fp(vendHoy);g('comp-prev').textContent='—';g('comp-delta').textContent='Selecciona una fecha para comparar';return}
-  const f=new Date(fecha+'T00:00:00');
-  const fPrev=new Date(f.getTime()-7*86400000);
-  const fPrevStr=fechaLocalISO(fPrev);
-  // Filtrar visitas y detalles del día previo
-  let visPrev=dV.filter(v=>normFecha(v.FECHA)===fPrevStr);
+function renderComparativo(rf,inicio,fin,vendHoy){
+  // Compara el rango seleccionado con los mismos días de la semana anterior.
+  if(!inicio||!fin){g('comp-prev-lbl').textContent='—';g('comp-hoy').textContent=fp(vendHoy);g('comp-prev').textContent='—';g('comp-delta').textContent='Selecciona un rango para comparar';return}
+  const inicioPrev=new Date(inicio+'T00:00:00');
+  const finPrev=new Date(fin+'T00:00:00');
+  inicioPrev.setDate(inicioPrev.getDate()-7);
+  finPrev.setDate(finPrev.getDate()-7);
+  const inicioPrevStr=fechaLocalISO(inicioPrev),finPrevStr=fechaLocalISO(finPrev);
+  let visPrev=dV.filter(v=>fechaEnRango(v.FECHA,inicioPrevStr,finPrevStr));
   if(rf)visPrev=visPrev.filter(v=>v.RUTA_ID===rf);
   const rep=g('f-repartidor').value;
   if(rep)visPrev=visPrev.filter(v=>v.REPARTIDOR_ID===rep);
@@ -886,9 +909,7 @@ function renderComparativo(rf,fecha,vendHoy){
     vendPrevPaq+=(ent-dev);
   });
   const vendPrev=vendPrevPaq*PX;
-  const diaSem=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][fPrev.getDay()];
-  const fechaPrevFmt=`${String(fPrev.getDate()).padStart(2,'0')}/${String(fPrev.getMonth()+1).padStart(2,'0')}`;
-  g('comp-prev-lbl').textContent=`${diaSem} ${fechaPrevFmt}`;
+  g('comp-prev-lbl').textContent=etiquetaRango(inicioPrevStr,finPrevStr);
   g('comp-hoy').textContent=fp(vendHoy);
   g('comp-prev').textContent=fp(vendPrev);
   if(vendPrev===0&&vendHoy===0){g('comp-delta').textContent='Sin datos para comparar';return}
@@ -897,18 +918,24 @@ function renderComparativo(rf,fecha,vendHoy){
   const pctDelta=Math.round((delta/vendPrev)*100);
   const col=delta>=0?'var(--green)':'var(--red)';
   const arrow=delta>=0?'▲':'▼';
-  g('comp-delta').innerHTML=`<span style="color:${col};font-weight:700">${arrow} ${pctDelta>0?'+':''}${pctDelta}%</span> · ${delta>=0?'+':''}${fp(delta)} vs misma fecha`;
+  g('comp-delta').innerHTML=`<span style="color:${col};font-weight:700">${arrow} ${pctDelta>0?'+':''}${pctDelta}%</span> · ${delta>=0?'+':''}${fp(delta)} vs semana anterior`;
 }
 
-function renderTiendasPendientes(rf,fecha,vIdsVisitadas){
+function renderTiendasPendientes(rf,inicio,fin,vIdsVisitadas){
   g('pend-load').style.display='none';
   const body=g('pend-body');body.innerHTML='';
   // Determinar tiendas esperadas del día/ruta
   // Si hay ruta filtrada, usar esa. Si no hay filtro, usar la ruta de hoy según día de semana.
   let rutaTarget=rf;
   if(!rutaTarget){
-    // Buscar la ruta del día actual de la semana
-    const dow=new Date().getDay();// 0=Domingo, 1=Lunes...
+    if(inicio&&fin&&inicio!==fin){
+      g('e-pend').style.display='block';
+      g('e-pend').textContent='Selecciona una ruta para consultar pendientes en un rango.';
+      g('pend-ct').textContent='';
+      return;
+    }
+    // Buscar la ruta correspondiente al día consultado.
+    const dow=new Date((inicio||hoy())+'T00:00:00').getDay();// 0=Domingo, 1=Lunes...
     const diaNum=dow===0?7:dow; // ajustar 0-6 a 1-7 (Domingo=7)
     const rt=dR.find(r=>+r.DIA===diaNum);
     if(rt)rutaTarget=rt.RUTA_ID;
@@ -917,8 +944,7 @@ function renderTiendasPendientes(rf,fecha,vIdsVisitadas){
   // Tiendas asignadas a esa ruta — sacarlas del array dRT (06_Ruta_Tiendas)
   const tiendasRuta=(dRT||[]).filter(rt=>rt.RUTA_ID===rutaTarget).map(rt=>rt.TIENDA_ID);
   // Saber qué tiendas ya tienen visita hoy
-  const fechaUsar=fecha||hoy();
-  const tiendasVisitadas=new Set(dV.filter(v=>normFecha(v.FECHA)===fechaUsar&&v.RUTA_ID===rutaTarget).map(v=>v.TIENDA_ID));
+  const tiendasVisitadas=new Set(dV.filter(v=>fechaEnRango(v.FECHA,inicio,fin)&&v.RUTA_ID===rutaTarget).map(v=>v.TIENDA_ID));
   const pendientes=tiendasRuta.filter(tid=>!tiendasVisitadas.has(tid));
   g('pend-ct').textContent=`${pendientes.length} de ${tiendasRuta.length} pendientes · ${rutaTarget}`;
   if(!pendientes.length){g('e-pend').style.display='block';g('e-pend').textContent='Todas las tiendas visitadas ✓';return}
@@ -1066,15 +1092,15 @@ function renderCarga(){
   const tbody=g('b-carga');if(!tbody)return;
   tbody.innerHTML='';
 
-  const rf=g('f-ruta').value, fecha=fechaSeleccionada(), rep=g('f-repartidor').value;
-  const cargaFiltrada=dC.filter(c=>(!fecha||normFecha(c.FECHA)===fecha)&&(!rf||c.RUTA_ID===rf)&&(!rep||c.REPARTIDOR_ID===rep));
+  const rf=g('f-ruta').value, {inicio,fin}=rangoFechasSeleccionado(), rep=g('f-repartidor').value;
+  const cargaFiltrada=dC.filter(c=>fechaEnRango(c.FECHA,inicio,fin)&&(!rf||c.RUTA_ID===rf)&&(!rep||c.REPARTIDOR_ID===rep));
   const visitaPorId={};
   dV.forEach(v=>{if(v.VISITA_ID)visitaPorId[v.VISITA_ID]=v});
   const detallesFiltrados=dD.filter(d=>{
     const visita=visitaPorId[d.VISITA_ID]||{};
     const fechaDet=normFecha(d.FECHA)||normFecha(visita.FECHA);
     const rutaDet=d.RUTA_ID||visita.RUTA_ID||'';
-    return (!fecha||fechaDet===fecha)&&(!rf||rutaDet===rf)&&(!rep||visita.REPARTIDOR_ID===rep);
+    return fechaEnRango(fechaDet,inicio,fin)&&(!rf||rutaDet===rf)&&(!rep||visita.REPARTIDOR_ID===rep);
   });
 
   if(!cargaFiltrada.length){g('e-carga').style.display='block';return}
@@ -1140,10 +1166,9 @@ function renderCarga(){
 
 
 function corteFiltrado(){
-  const rf=g('f-ruta').value, fecha=fechaSeleccionada(), rep=g('f-repartidor').value, estado=g('f-corte').value;
+  const rf=g('f-ruta').value, {inicio,fin}=rangoFechasSeleccionado(), rep=g('f-repartidor').value, estado=g('f-corte').value;
   return (dCC||[]).filter(c=>{
-    const f=normFecha(c.FECHA);
-    const okFecha=!fecha || f===fecha;
+    const okFecha=fechaEnRango(c.FECHA,inicio,fin);
     const okRuta=!rf || c.RUTA_ID===rf;
     const okRep=!rep||c.REPARTIDOR_ID===rep;
     const st=cutStatus(c);
@@ -1208,11 +1233,13 @@ function estadoCorteTexto(cortes){
 }
 
 function buildExportContext(){
-  const fecha=fechaSeleccionada()||hoy();
+  const {inicio,fin}=rangoFechasSeleccionado();
+  const fecha=inicio||fin||hoy();
+  const rangoLabel=etiquetaRango(inicio,fin);
   const rf=g('f-ruta').value, rep=g('f-repartidor').value;
   const visitaPorId={};
   dV.forEach(v=>{if(v.VISITA_ID)visitaPorId[v.VISITA_ID]=v});
-  const visitas=dV.filter(v=>(!fecha||normFecha(v.FECHA)===fecha)&&(!rf||v.RUTA_ID===rf)&&(!rep||v.REPARTIDOR_ID===rep));
+  const visitas=dV.filter(v=>fechaEnRango(v.FECHA,inicio,fin)&&(!rf||v.RUTA_ID===rf)&&(!rep||v.REPARTIDOR_ID===rep));
   const visitasFiltradasPorId={};
   visitas.forEach(v=>{if(v.VISITA_ID)visitasFiltradasPorId[v.VISITA_ID]=v});
   const detalles=dD.filter(d=>{
@@ -1220,7 +1247,7 @@ function buildExportContext(){
     if(!visita)return false;
     const fechaDet=normFecha(d.FECHA)||normFecha(visita.FECHA);
     const rutaDet=d.RUTA_ID||visita.RUTA_ID||'';
-    const okFecha=!fecha||fechaDet===fecha||!!visitasFiltradasPorId[d.VISITA_ID];
+    const okFecha=fechaEnRango(fechaDet,inicio,fin)||!!visitasFiltradasPorId[d.VISITA_ID];
     const okRuta=!rf||rutaDet===rf;
     const okRep=!rep||visita.REPARTIDOR_ID===rep;
     return okFecha&&okRuta&&okRep;
@@ -1239,10 +1266,10 @@ function buildExportContext(){
       NO_OPEN_NOTE:visita.NO_OPEN_NOTE||''
     };
   });
-  const inventario=dC.filter(c=>(!fecha||normFecha(c.FECHA)===fecha)&&(!rf||c.RUTA_ID===rf)&&(!rep||c.REPARTIDOR_ID===rep));
+  const inventario=dC.filter(c=>fechaEnRango(c.FECHA,inicio,fin)&&(!rf||c.RUTA_ID===rf)&&(!rep||c.REPARTIDOR_ID===rep));
   const cortes=corteFiltrado();
   const noAbrio=visitas.filter(esNoAbrio);
-  return {fecha,rf,rep,visitas,detalles,inventario,cortes,noAbrio};
+  return {fecha,fechaInicio:inicio,fechaFin:fin,rangoLabel,rf,rep,visitas,detalles,inventario,cortes,noAbrio};
 }
 
 function sheetFromRows(rows,opts={}){
@@ -1328,7 +1355,7 @@ function exportarExcel(){
   const gruposRep=ventasPorRepartidorData();
 
   const resumen=[
-    ['Fecha',ctx.fecha],
+    ['Rango de fechas',ctx.rangoLabel],
     ['Ruta filtrada',rutaFiltro],
     ['Total vendido',+totalVendido.toFixed(2)],
     ['Total efectivo',+totalEfectivo.toFixed(2)],
@@ -1464,7 +1491,8 @@ function exportarExcel(){
   XLSX.utils.book_append_sheet(wb,wsNoAbrio,'No abrió');
 
   const rutaArchivo=ctx.rf?safeFilePart(ctx.rf):'todas_rutas';
-  XLSX.writeFile(wb,`reporte_contadora_${ctx.fecha}_${rutaArchivo}.xlsx`);
+  const rangoArchivo=ctx.fechaInicio===ctx.fechaFin?ctx.fechaInicio:`${ctx.fechaInicio}_a_${ctx.fechaFin}`;
+  XLSX.writeFile(wb,`reporte_contadora_${rangoArchivo||ctx.fecha}_${rutaArchivo}.xlsx`);
 }
 
 function stab(id,btn){
@@ -1473,7 +1501,8 @@ function stab(id,btn){
   btn.classList.add('act');g('panel-'+id).classList.add('act');
 }
 
-g('f-fecha').value=hoy();
+g('f-fecha-inicio').value=hoy();
+g('f-fecha-fin').value=hoy();
 configurarLogin();
 // Auto-refresh cada 5 minutos
 setInterval(cargarDatos, 5*60*1000);
