@@ -365,6 +365,34 @@ const g=id=>document.getElementById(id);
 const val=(o,...ks)=>{for(const k of ks){if(o&&o[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k]}return ''};
 const num=(o,...ks)=>money(val(o,...ks));
 const boolSi=v=>v===true||v==='true'||v==='1'||v===1||String(v||'').toLowerCase()==='sí'||String(v||'').toLowerCase()==='si';
+function formatHora(value){
+  if(value===undefined||value===null||value==='')return '';
+  let date=null;
+  if(value&&typeof value.toDate==='function')date=value.toDate();
+  else if(value instanceof Date)date=value;
+  else{
+    const text=String(value).trim();
+    const time=text.match(/^(\d{1,2}):(\d{2})(?:\s*([AP])\.?M\.?)?$/i);
+    if(time){
+      let hour=Number(time[1]);
+      const minute=Number(time[2]);
+      const period=String(time[3]||'').toUpperCase();
+      if(period==='P'&&hour<12)hour+=12;
+      if(period==='A'&&hour===12)hour=0;
+      if(hour<24&&minute<60)return `${pad2(hour)}:${pad2(minute)}`;
+    }
+    const numeric=Number(text);
+    if(Number.isFinite(numeric)&&numeric>=1000000000){
+      date=new Date(numeric<100000000000?numeric*1000:numeric);
+    }else if(/^\d{1,2}:\d{2}/.test(text)){
+      return text.slice(0,5);
+    }
+  }
+  if(date&&!Number.isNaN(date.getTime())){
+    return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  }
+  return '';
+}
 const rangoFechasSeleccionado=()=>({
   inicio:normFecha(g('f-fecha-inicio')?.value||''),
   fin:normFecha(g('f-fecha-fin')?.value||'')
@@ -512,7 +540,7 @@ function normalizeVisits(rows){
     RUTA_ID: val(o,'routeId','rutaId','RUTA_ID'),
     TIENDA_ID: val(o,'storeId','tiendaId','TIENDA_ID'),
     REPARTIDOR_ID: val(o,'repartidorId','driverId','repartidor','driverName','REPARTIDOR_ID','REPARTIDOR'),
-    HORA_LLEGADA: val(o,'arrivalTime','horaLlegada','HORA_LLEGADA','createdAt','updatedAt'),
+    HORA_LLEGADA: formatHora(val(o,'arrivalTime','horaLlegada','HORA_LLEGADA')||val(o,'createdAt','updatedAt')),
     ESTADO: val(o,'status','estado','ESTADO'),
     FORMA_PAGO: val(o,'paymentMethod','formaPago','FORMA_PAGO'),
     PENDING_REASON: val(o,'pendingReason','motivoPendiente','PENDING_REASON'),
@@ -580,7 +608,7 @@ function normalizeCuts(rows){
     ESTADO_CUADRE: val(o,'estado','estadoCorte','estadoCuadre','ESTADO_CUADRE'),
     ESTADO_CORTE: val(o,'estadoCorte','ESTADO_CORTE'),
     CERRADO: boolSi(val(o,'closed','cerrado','CERRADO')),
-    HORA_CIERRE: val(o,'closedAt','horaCierre','HORA_CIERRE','updatedAt'),
+    HORA_CIERRE: formatHora(val(o,'closedAt','horaCierre','HORA_CIERRE')||val(o,'updatedAt')),
     MOTIVO_DIFERENCIA: val(o,'shortageReasonNote','cashDifferenceNote','MOTIVO_DIFERENCIA')
   })).filter(o=>o.CORTE_ID||o.FECHA||o.RUTA_ID);
 }
@@ -992,7 +1020,8 @@ function renderTiendas(det){
   g('det-t').style.display='none';
   const por={};
   const horaMap={};
-  dV.forEach(v=>{if(v.TIENDA_ID&&v.HORA_LLEGADA)horaMap[v.TIENDA_ID]=String(v.HORA_LLEGADA).substring(0,5)});
+  const visitasVisibles=new Set(det.map(d=>d.VISITA_ID).filter(Boolean));
+  dV.forEach(v=>{if(visitasVisibles.has(v.VISITA_ID)&&v.TIENDA_ID&&v.HORA_LLEGADA)horaMap[v.TIENDA_ID]=v.HORA_LLEGADA});
   det.forEach(d=>{
     const tid=d.TIENDA_ID||'?';
     if(!por[tid])por[tid]={ini:0,ent:0,dev:0,fin:0,cob:0,pag:0,prods:[],hora:''};
