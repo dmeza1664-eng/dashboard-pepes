@@ -104,6 +104,11 @@ tr:last-child td{border-bottom:none}
 @keyframes rot{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:40px;color:var(--text3);font-family:var(--mono);font-size:11px;letter-spacing:.5px}
 .err{background:rgba(255,74,110,.06);border:1px solid rgba(255,74,110,.2);color:var(--red);padding:12px 16px;border-radius:8px;font-size:11px;margin-bottom:16px;display:none;font-family:var(--mono)}
+.financial-state{display:none;align-items:center;justify-content:space-between;gap:14px;padding:10px 14px;border-radius:9px;margin-bottom:16px;border:1px solid var(--border2);font-family:var(--mono)}
+.financial-state-title{font-size:12px;font-weight:700;white-space:nowrap}.financial-state-detail{font-size:11px;text-align:right}
+.financial-state.preliminary{background:rgba(255,170,0,.08);border-color:rgba(255,170,0,.22);color:var(--amber)}
+.financial-state.definitive{background:rgba(0,255,157,.07);border-color:rgba(0,255,157,.18);color:var(--green)}
+.financial-state.mixed{background:rgba(59,158,255,.07);border-color:rgba(59,158,255,.18);color:var(--blue)}
 .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;z-index:2}
 .login-card{width:min(420px,100%);background:var(--s);border:1px solid var(--border2);border-radius:18px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,.35)}
 .login-brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}.login-brand .logo-mark{width:42px;height:42px}
@@ -118,7 +123,7 @@ tr:last-child td{border-bottom:none}
 .rep-head{padding:16px 20px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;background:var(--s2);border-bottom:1px solid var(--border)}
 .rep-title{font-size:17px;font-weight:700}.rep-meta{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:4px}
 .rep-mets{display:flex;gap:18px;flex-wrap:wrap}.rep-met{min-width:105px}.rep-met label{display:block;font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:4px}.rep-met strong{font-family:var(--mono);font-size:13px}
-@media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}.financial-state{align-items:flex-start;flex-direction:column;gap:4px}.financial-state-detail{text-align:left}}
 </style>
 </head>
 <body>
@@ -151,7 +156,7 @@ tr:last-child td{border-bottom:none}
     <div><div class="logo-name">Pastelería Pepes</div><div class="logo-tag" style="margin-top:2px">Firebase</div></div>
   </div>
   <div class="hdr-r">
-    <div class="hdr-date" id="hdr-upd" title="Auto-actualiza cada 5 min">⟳ —</div>
+    <div class="hdr-date" id="hdr-upd" title="Actualización en tiempo real desde Firestore">● Conectando…</div>
     <div class="hdr-date" id="hdr-date">—</div>
     <button class="btn" onclick="exportarExcel()">⬇ Exportar Excel</button>
     <button class="btn" onclick="cargarDatos()">↻ ACTUALIZAR</button>
@@ -167,7 +172,7 @@ tr:last-child td{border-bottom:none}
   <div class="fg"><span class="fl">Estado corte</span><select id="f-corte" onchange="renderizar()"><option value="">Todos</option><option value="abierto">Abierto</option><option value="cerrado">Cerrado</option><option value="cuadra">Cuadra</option><option value="no-cuadra">No cuadra</option></select></div>
 </div>
 
-<div style="padding:8px 32px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3)">Fuente: Firestore · routeInventories / visits / visitDetails / cashCuts <span id="fecha-ayuda" style="display:none;margin-left:12px;color:var(--amber)"></span></div>
+<div style="padding:8px 32px;background:var(--bg2);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text3)">Fuente: Firestore en tiempo real · tiendas / visitas / detalles / inventario / cortes <span id="fecha-ayuda" style="display:none;margin-left:12px;color:var(--amber)"></span></div>
 
 <div class="tabs">
   <button class="tab act" onclick="stab('resumen',this)">Resumen</button>
@@ -181,6 +186,10 @@ tr:last-child td{border-bottom:none}
 
 <main>
   <div class="err" id="err"></div>
+  <div class="financial-state" id="financial-state" role="status" aria-live="polite">
+    <div class="financial-state-title" id="financial-state-title"></div>
+    <div class="financial-state-detail" id="financial-state-detail"></div>
+  </div>
 
   <div id="panel-resumen" class="panel act">
     <div class="mets">
@@ -467,6 +476,17 @@ function actualizarAyudaFecha(inicio,fin){
 let db=null;
 let auth=null;
 let authReady=false;
+const FIRESTORE_LIVE_COLLECTIONS=[
+  'routeInventories','visits','visitDetails','cashCuts',
+  'stores','products','dailyStoreAssignments','users'
+];
+// Catálogos auxiliares: el dashboard conserva nombres locales si las reglas no permiten leerlos.
+const OPTIONAL_LIVE_COLLECTIONS=new Set(['products','users']);
+let realtimeUnsubscribers=[];
+let realtimeData={};
+let realtimeReady=new Set();
+let realtimeErrors=new Set();
+let realtimeTimer=null;
 function initFirebase(){
   const missing=!FIREBASE_CONFIG.projectId || String(FIREBASE_CONFIG.projectId).startsWith('PEGA_AQUI');
   if(missing){
@@ -502,6 +522,7 @@ async function iniciarSesion(email,password){
 }
 function cerrarSesion(){
   initFirebase();
+  detenerActualizacionTiempoReal();
   auth.signOut();
 }
 function configurarLogin(){
@@ -526,8 +547,9 @@ function configurarLogin(){
     authReady=true;
     if(user){
       mostrarDashboard();
-      cargarDatos();
+      iniciarActualizacionTiempoReal();
     }else{
+      detenerActualizacionTiempoReal();
       mostrarLogin();
       dV=[];dD=[];dR=[];dT={};dP={};dU={};dC=[];dRT=[];dCC=[];
     }
@@ -536,6 +558,25 @@ function configurarLogin(){
 async function fetchCol(name){
   const snap=await db.collection(name).get();
   return snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+}
+
+function horaActual(){
+  const n=new Date();
+  return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+}
+
+function actualizarEstadoDatos(texto,titulo='Actualización en tiempo real desde Firestore'){
+  const el=g('hdr-upd');
+  if(!el)return;
+  el.textContent=texto;
+  el.title=titulo;
+}
+
+function mostrarCargaInicial(){
+  const err=g('err');if(err)err.style.display='none';
+  ['falt-load','rutas-load','t-load','p-load','pend-load','carga-load'].forEach(id=>{const l=g(id);if(l)l.style.display='flex'});
+  ['t-rutas','t-tiendas','falt-body','p-body','pend-body','t-carga'].forEach(id=>{const el=g(id);if(el)el.style.display='none'});
+  ['e-pend','e-carga','e-tiendas','e-prod','e-rutas','e-corte'].forEach(id=>{const el=g(id);if(el)el.style.display='none'});
 }
 
 function normalizeProductId(pid){
@@ -773,16 +814,101 @@ function normalizeRoutesFromData(){
   });
 }
 
+function aplicarDatosRemotos(datos,{tiempoReal=false}={}){
+  dC=normalizeInventory(datos.routeInventories||[]);
+  dV=normalizeVisits(datos.visits||[]);
+  dD=normalizeDetails(datos.visitDetails||[]);
+  dCC=normalizeCuts(datos.cashCuts||[]);
+  normalizeStores(datos.stores||[]);
+  normalizeProducts(datos.products||[]);
+  normalizeUsers(datos.users||[]);
+  normalizeAssignments(datos.dailyStoreAssignments||[]);
+  normalizeRoutesFromData();
+
+  const sel=g('f-ruta');const prev=sel.value;
+  sel.innerHTML='<option value="">Todas las rutas</option>';
+  dR.forEach(r=>{if(!r.RUTA_ID)return;const o=document.createElement('option');o.value=r.RUTA_ID;o.textContent=r.RUTA||r.RUTA_ID;sel.appendChild(o)});
+  if(prev&&dR.some(r=>r.RUTA_ID===prev))sel.value=prev;
+
+  const selRep=g('f-repartidor');const prevRep=selRep.value;
+  const repIds=new Set();
+  [...dV,...dC,...dCC,...dRT].forEach(o=>{if(o.REPARTIDOR_ID)repIds.add(o.REPARTIDOR_ID)});
+  selRep.innerHTML='<option value="">Todos los repartidores</option>';
+  [...repIds].sort((a,b)=>driverName(a).localeCompare(driverName(b))).forEach(rid=>{const o=document.createElement('option');o.value=rid;o.textContent=driverName(rid);selRep.appendChild(o)});
+  if(prevRep&&repIds.has(prevRep))selRep.value=prevRep;
+
+  renderizar();
+  if(tiempoReal){
+    const parcial=realtimeErrors.size>0;
+    actualizarEstadoDatos(
+      parcial?`⚠ Parcial ${horaActual()}`:`● En vivo ${horaActual()}`,
+      parcial?`Sin acceso temporal a: ${[...realtimeErrors].join(', ')}`:'Los datos se actualizan automáticamente desde Firestore'
+    );
+    const err=g('err');
+    if(err){
+      if(parcial){
+        err.textContent=`⚠ Actualización parcial. No se pudo escuchar: ${[...realtimeErrors].join(', ')}.`;
+        err.style.display='block';
+      }else{
+        err.style.display='none';
+      }
+    }
+  }
+}
+
+function detenerActualizacionTiempoReal(){
+  realtimeUnsubscribers.forEach(unsubscribe=>{try{unsubscribe()}catch(e){console.warn('No se pudo cerrar un listener de Firestore',e)}});
+  realtimeUnsubscribers=[];
+  realtimeData={};
+  realtimeReady=new Set();
+  realtimeErrors=new Set();
+  if(realtimeTimer){clearTimeout(realtimeTimer);realtimeTimer=null}
+}
+
+function programarAplicacionTiempoReal(){
+  if(realtimeReady.size<FIRESTORE_LIVE_COLLECTIONS.length)return;
+  if(realtimeTimer)clearTimeout(realtimeTimer);
+  // Una visita y sus detalles pueden llegar en snapshots separados; se agrupan en un solo render.
+  realtimeTimer=setTimeout(()=>{
+    realtimeTimer=null;
+    aplicarDatosRemotos(realtimeData,{tiempoReal:true});
+  },180);
+}
+
+function iniciarActualizacionTiempoReal(){
+  initFirebase();
+  if(!authReady||!auth.currentUser)return;
+  detenerActualizacionTiempoReal();
+  mostrarCargaInicial();
+  actualizarEstadoDatos('● Conectando…');
+
+  FIRESTORE_LIVE_COLLECTIONS.forEach(nombre=>{
+    const unsubscribe=db.collection(nombre).onSnapshot(snapshot=>{
+      realtimeData[nombre]=snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
+      realtimeReady.add(nombre);
+      realtimeErrors.delete(nombre);
+      programarAplicacionTiempoReal();
+    },error=>{
+      const opcional=OPTIONAL_LIVE_COLLECTIONS.has(nombre);
+      const log=opcional?console.warn:console.error;
+      log(`Error en actualización Firestore (${nombre})`,error);
+      if(!Object.prototype.hasOwnProperty.call(realtimeData,nombre))realtimeData[nombre]=[];
+      realtimeReady.add(nombre);
+      if(opcional)realtimeErrors.delete(nombre);else realtimeErrors.add(nombre);
+      programarAplicacionTiempoReal();
+    });
+    realtimeUnsubscribers.push(unsubscribe);
+  });
+}
+
 async function cargarDatos(){
   initFirebase();
   if(!authReady || !auth.currentUser){
     mostrarLogin();
     return;
   }
-  g('err').style.display='none';
-  ['falt-load','rutas-load','t-load','p-load','pend-load','carga-load'].forEach(id=>{const l=g(id);if(l)l.style.display='flex'});
-  ['t-rutas','t-tiendas','falt-body','p-body','pend-body','t-carga'].forEach(id=>{const el=g(id);if(el)el.style.display='none'});
-  ['e-pend','e-carga','e-tiendas','e-prod','e-rutas','e-corte'].forEach(id=>{const el=g(id);if(el)el.style.display='none'});
+  mostrarCargaInicial();
+  actualizarEstadoDatos('↻ Actualizando…','Actualización manual desde Firestore');
   try{
     initFirebase();
 
@@ -797,33 +923,8 @@ async function cargarDatos(){
       fetchCol('users').catch(()=>[])
     ]);
 
-    dC=normalizeInventory(routeInventories);
-    dV=normalizeVisits(visits);
-    dD=normalizeDetails(visitDetails);
-    dCC=normalizeCuts(cashCuts);
-    normalizeStores(stores);
-    normalizeProducts(products);
-    normalizeUsers(users);
-    normalizeAssignments(dailyAssignments);
-
-    // Si todavía no sincronizas catálogo stores a Firebase, se mostrarán IDs de tienda.
-    // Cuando agregues stores a Firestore, el dashboard mostrará nombres, colonia y teléfono.
-    normalizeRoutesFromData();
-
-    const sel=g('f-ruta');const prev=sel.value;
-    sel.innerHTML='<option value="">Todas las rutas</option>';
-    dR.forEach(r=>{if(!r.RUTA_ID)return;const o=document.createElement('option');o.value=r.RUTA_ID;o.textContent=r.RUTA||r.RUTA_ID;sel.appendChild(o)});
-    if(prev)sel.value=prev;
-
-    const selRep=g('f-repartidor');const prevRep=selRep.value;
-    const repIds=new Set();
-    [...dV,...dC,...dCC,...dRT].forEach(o=>{if(o.REPARTIDOR_ID)repIds.add(o.REPARTIDOR_ID)});
-    selRep.innerHTML='<option value="">Todos los repartidores</option>';
-    [...repIds].sort((a,b)=>driverName(a).localeCompare(driverName(b))).forEach(rid=>{const o=document.createElement('option');o.value=rid;o.textContent=driverName(rid);selRep.appendChild(o)});
-    if(prevRep)selRep.value=prevRep;
-
-    actualizarHora();
-    renderizar();
+    aplicarDatosRemotos({routeInventories,visits,visitDetails,cashCuts,stores,products,dailyStoreAssignments:dailyAssignments,users});
+    actualizarEstadoDatos(`↻ Actualizado ${horaActual()}`,'Actualización manual completada; la escucha en tiempo real continúa activa');
   }catch(e){
     console.error(e);
     const eb=g('err');
@@ -833,22 +934,15 @@ async function cargarDatos(){
   }
 }
 
-function actualizarHora(){
-  const n=new Date();
-  const hh=String(n.getHours()).padStart(2,'0');
-  const mm=String(n.getMinutes()).padStart(2,'0');
-  const el=g('hdr-upd');if(el)el.textContent=`⟳ ${hh}:${mm}`;
-}
-
 const esc=s=>String(s===undefined||s===null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const repKey=(fecha,repartidor,ruta)=>[normFecha(fecha),repartidor||'',ruta||''].join('|');
 function cutStatus(c){
-  if(!c)return {filter:'abierto',label:'Abierto'};
+  if(!c)return {filter:'abierto',label:'Preliminar',definitive:false};
   const estado=String(c.ESTADO_CUADRE||c.ESTADO_CORTE||'').toUpperCase();
   const cerrado=c.CERRADO||estado.includes('CERRAD')||estado.includes('CUADRA');
-  if(estado.includes('NO')&&estado.includes('CUADRA'))return {filter:'no-cuadra',label:'Cerrado - No cuadra'};
-  if(estado.includes('CUADRA'))return {filter:'cuadra',label:'Cerrado - Cuadra'};
-  return cerrado?{filter:'cerrado',label:'Cerrado'}:{filter:'abierto',label:'Abierto'};
+  if(estado.includes('NO')&&estado.includes('CUADRA'))return {filter:'no-cuadra',label:'Definitivo · No cuadra',definitive:true};
+  if(estado.includes('CUADRA'))return {filter:'cuadra',label:'Definitivo · Cuadra',definitive:true};
+  return cerrado?{filter:'cerrado',label:'Definitivo · Corte cerrado',definitive:true}:{filter:'abierto',label:'Preliminar',definitive:false};
 }
 function paymentType(v){
   const s=String(v.FORMA_PAGO||'').toLowerCase();
@@ -903,6 +997,29 @@ function ventasPorRepartidorData(){
     gr.diferencia=gr.corte?money(gr.corte.DIFERENCIA_EFECTIVO):0;
   });
   return Object.values(groups).filter(gr=>!estadoFiltro||gr.estadoCorte.filter===estadoFiltro||(estadoFiltro==='cerrado'&&gr.estadoCorte.filter!=='abierto')).sort((a,b)=>a.fecha.localeCompare(b.fecha)||driverName(a.repartidorId).localeCompare(driverName(b.repartidorId))||a.ruta.localeCompare(b.ruta));
+}
+
+function renderEstadoFinanciero(){
+  const el=g('financial-state'),title=g('financial-state-title'),detail=g('financial-state-detail');
+  const grupos=ventasPorRepartidorData();
+  if(!grupos.length){el.style.display='none';return}
+  const definitivos=grupos.filter(gr=>gr.estadoCorte.definitive).length;
+  const preliminares=grupos.length-definitivos;
+  el.className='financial-state';
+  if(definitivos===0){
+    el.classList.add('preliminary');
+    title.textContent='Información preliminar';
+    detail.textContent=`${preliminares} ${preliminares===1?'ruta':'rutas'} sin corte · Datos en tiempo real desde visitas registradas.`;
+  }else if(preliminares===0){
+    el.classList.add('definitive');
+    title.textContent='Corte cerrado · Información definitiva';
+    detail.textContent=`${definitivos} ${definitivos===1?'ruta con corte cerrado':'rutas con corte cerrado'}.`;
+  }else{
+    el.classList.add('mixed');
+    title.textContent='Información mixta';
+    detail.textContent=`${definitivos} ${definitivos===1?'ruta definitiva':'rutas definitivas'} y ${preliminares} ${preliminares===1?'ruta preliminar':'rutas preliminares'} · Revisa el estado por repartidor.`;
+  }
+  el.style.display='flex';
 }
 
 function renderVentasPorRepartidor(){
@@ -1017,6 +1134,7 @@ function renderizar(){
   g('m-d').textContent=tDev;g('m-ds').textContent=fp(tDev*PX)+' valor';
   g('m-pend').textContent=fp(tPend);g('m-pends').textContent=nTiendasPend?`${nTiendasPend} tienda${nTiendasPend>1?'s':''} sin pagar`:'todo cobrado';
   g('m-a').textContent=pct+'%';g('m-as').textContent=`${vIds.size} tiendas`;
+  renderEstadoFinanciero();
   const consignments=buildConsignmentSummary(inicio,fin,rf,rep);
   renderRutas(det);renderTiendas(det);renderProductos(det);renderConsignments(consignments);renderCarga();renderCorte();renderVentasPorRepartidor();renderCalendarioRutas();
   renderComparativo(rf,inicio,fin,pV);renderTiendasPendientes(rf,inicio,fin,vIds);
@@ -1666,8 +1784,6 @@ function stab(id,btn){
 g('f-fecha-inicio').value=hoy();
 g('f-fecha-fin').value=hoy();
 configurarLogin();
-// Auto-refresh cada 5 minutos
-setInterval(cargarDatos, 5*60*1000);
 </script>
 </body>
 </html>
