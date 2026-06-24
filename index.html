@@ -352,6 +352,8 @@ const FIREBASE_CONFIG = {
 
 const PX=17.50;
 const PNOM={GC001:'Galletas Chocolate',GA002:'Galletas Ate',GN003:'Galletas Nuez',GAL004:'Galletas Alfajor',P001:'Galletas Chocolate',P002:'Galletas Ate',P003:'Galletas Nuez',P004:'Galletas Alfajor'};
+// Alias visuales: conservan los IDs históricos usados por visitas, cortes e inventarios.
+const DRIVER_NAME_OVERRIDES={repartidor1:'Rosa'};
 const PCOL={GC001:'var(--green)',GA002:'var(--blue)',GN003:'var(--amber)',GAL004:'var(--red)',P001:'var(--green)',P002:'var(--blue)',P003:'var(--amber)',P004:'var(--red)'};
 const PSHORT={GC001:'Chocolate',GA002:'Ate',GN003:'Nuez',GAL004:'Alfajor',P001:'Chocolate',P002:'Ate',P003:'Nuez',P004:'Alfajor'};
 const DIAS=['—','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
@@ -433,7 +435,7 @@ const fechasDe=rows=>[...new Set((rows||[]).map(o=>normFecha(o.FECHA||o.date||o.
 const fechasConDatos=()=>[...new Set([...fechasDe(dV),...fechasDe(dC),...fechasDe(dCC),...fechasDe(dD)])].sort();
 const productName=pid=>{const p=normalizeProductId(pid);return (dP[p]&&dP[p].nombre)||PNOM[p]||p||''};
 const storeInfo=tid=>dT[tid]||{nombre:tid||'',municipio:'',colonia:'',telefono:'',encargado:''};
-const driverName=rid=>(dU[rid]&&dU[rid].nombre)||rid||'Sin repartidor';
+const driverName=rid=>DRIVER_NAME_OVERRIDES[rid]||(dU[rid]&&dU[rid].nombre)||rid||'Sin repartidor';
 function seleccionarFechaConDatos(fecha){
   const f=normFecha(fecha);
   if(!f)return;
