@@ -123,7 +123,34 @@ tr:last-child td{border-bottom:none}
 .rep-head{padding:16px 20px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;background:var(--s2);border-bottom:1px solid var(--border)}
 .rep-title{font-size:17px;font-weight:700}.rep-meta{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:4px}
 .rep-mets{display:flex;gap:18px;flex-wrap:wrap}.rep-met{min-width:105px}.rep-met label{display:block;font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:4px}.rep-met strong{font-family:var(--mono);font-size:13px}
-@media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}.financial-state{align-items:flex-start;flex-direction:column;gap:4px}.financial-state-detail{text-align:left}}
+.store-detail-overlay{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,6,11,.78);backdrop-filter:blur(6px)}
+.store-detail-overlay.open{display:flex}
+.store-detail-modal{width:min(820px,100%);max-height:min(760px,calc(100vh - 40px));overflow:hidden;background:var(--s);border:1px solid var(--border2);border-radius:14px;box-shadow:0 28px 90px rgba(0,0,0,.52);animation:store-detail-in .18s ease}
+.store-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:18px 20px;border-bottom:1px solid var(--border);background:var(--s2)}
+.store-detail-kicker{font-family:var(--mono);font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:5px}
+.store-detail-head h2{font-size:18px;line-height:1.25;letter-spacing:.2px}
+.store-detail-close{flex:0 0 auto;width:34px;height:34px;border:1px solid var(--border2);border-radius:7px;background:var(--s);color:var(--text2);font-size:22px;line-height:1;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.store-detail-close:hover{border-color:var(--green);color:var(--green);background:rgba(0,255,157,.04)}
+.store-detail-body{max-height:calc(min(760px,100vh - 40px) - 72px);overflow:auto;padding:18px 20px 20px}
+.store-detail-summary{display:grid;grid-template-columns:1.15fr 1.85fr;gap:12px;margin-bottom:14px}
+.store-detail-block{min-width:0;padding:13px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:9px}
+.store-detail-label{display:block;margin-bottom:6px;font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px}
+.store-detail-value{font-size:14px;font-weight:650;line-height:1.45;overflow-wrap:anywhere}
+.store-detail-meta{margin-top:5px;font-family:var(--mono);font-size:10px;line-height:1.55;color:var(--text2)}
+.store-detail-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.store-detail-stat{padding:13px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:9px}
+.store-detail-stat strong{display:block;font-family:var(--mono);font-size:20px;color:var(--green);margin-top:4px}
+.store-detail-flavors{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.store-detail-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:9px}
+.store-detail-table{min-width:420px}
+.store-detail-table th,.store-detail-table td{padding:10px 14px}
+.store-detail-table tfoot td{background:var(--s2);font-weight:700;color:var(--text)}
+.store-detail-empty{padding:30px;text-align:center;color:var(--text2);font-family:var(--mono);font-size:11px}
+.store-row-detail{cursor:zoom-in}
+body.modal-open{overflow:hidden}
+@keyframes store-detail-in{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}.financial-state{align-items:flex-start;flex-direction:column;gap:4px}.financial-state-detail{text-align:left}.store-detail-summary,.store-detail-stats{grid-template-columns:1fr}}
+@media(max-width:560px){.store-detail-overlay{align-items:flex-end;padding:0}.store-detail-modal{max-height:92vh;border-radius:14px 14px 0 0}.store-detail-head{padding:15px 16px}.store-detail-head h2{font-size:16px}.store-detail-body{max-height:calc(92vh - 68px);padding:14px 14px 18px}}
 </style>
 </head>
 <body>
@@ -248,7 +275,7 @@ tr:last-child td{border-bottom:none}
 
   <div id="panel-tiendas" class="panel">
     <div class="card">
-      <div class="ch"><div class="ct">Detalle por tienda</div><div class="cs">clic para desglose · <span id="ct-t"></span></div></div>
+      <div class="ch"><div class="ct">Detalle por tienda</div><div class="cs">clic para desglose · doble clic para reporte detalle · <span id="ct-t"></span></div></div>
       <div id="t-load" class="load"><div class="spin"></div>Cargando...</div>
       <table id="t-tiendas" style="display:none">
         <thead><tr><th>Tienda / Colonia</th><th>Galletas</th><th class="r">Hora</th><th class="r">Venta normal</th><th class="r">Venta consigna</th><th class="r">Devuelto</th><th class="r">Vendido $</th><th class="r">Cobrado $</th><th class="r">Pagado</th><th>Estado</th></tr></thead>
@@ -327,6 +354,19 @@ tr:last-child td{border-bottom:none}
     <div class="empty" id="e-cal" style="display:none">Sin rutas para los filtros seleccionados</div>
   </div>
 </main>
+</div>
+
+<div class="store-detail-overlay" id="store-detail-overlay" role="dialog" aria-modal="true" aria-labelledby="store-detail-title" onclick="if(event.target===this)cerrarReporteDetalleTienda()">
+  <section class="store-detail-modal">
+    <div class="store-detail-head">
+      <div>
+        <div class="store-detail-kicker">Reporte filtrado por tienda</div>
+        <h2 id="store-detail-title">AJUSTES REPORTE DETALLE POR TIENDA</h2>
+      </div>
+      <button class="store-detail-close" type="button" aria-label="Cerrar detalle" title="Cerrar" onclick="cerrarReporteDetalleTienda()">×</button>
+    </div>
+    <div class="store-detail-body" id="store-detail-body"></div>
+  </section>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -768,6 +808,8 @@ function normalizeStores(rows){
       nombre:val(o,'name','nombre','nombreTienda','NOMBRE','TIENDA')||tid,
       municipio:val(o,'municipio','MUNICIPIO'),
       colonia:val(o,'colonia','COLONIA'),
+      direccion:val(o,'address','direccion','domicilio','DIRECCION','DOMICILIO'),
+      zona:val(o,'zone','zona','sector','ZONE','ZONA','SECTOR'),
       telefono:val(o,'telefono','phone','TELEFONO','TEL'),
       encargado:val(o,'encargado','manager','ENCARGADO'),
       dia:num(o,'dayOfWeek','diaSemana','DIA')
@@ -1270,8 +1312,10 @@ function renderTiendas(det){
     const cnt={};t.prods.forEach(p=>{cnt[p]=(cnt[p]||0)+1});
     const tags=Object.entries(cnt).map(([k])=>`<span class="gtag g${k}">${PSHORT[k]||k}</span>`).join('');
     const pagB=t.pag?`<span class="badge bok">Sí</span>`:`<span class="badge bwarn">No</span>`;
-    const tr=document.createElement('tr');tr.className='trc';tr.dataset.est=est;
+    const tr=document.createElement('tr');tr.className='trc store-row-detail';tr.dataset.est=est;
+    tr.title='Doble clic para abrir el reporte detalle de esta tienda';
     tr.onclick=()=>abrirDet(tr,tid,info.nombre,t,vend,dif,cnt);
+    tr.ondblclick=event=>{event.preventDefault();abrirReporteDetalleTienda(tid)};
     const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:`<span style="color:var(--text3)">—</span>`;
     tr.innerHTML=`<td><div class="tn">${info.nombre}</div><div class="tm">${info.colonia||info.municipio}</div></td><td>${tags||'—'}</td><td class="r">${horaStr}</td><td class="r">${t.normalSold}</td><td class="r" style="color:var(--purple)">${t.consignmentSold}</td><td class="r" style="color:var(--red)">${t.dev}</td><td class="r" style="color:var(--green)">${fp(vendPesos)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td class="r">${pagB}</td><td>${pill}</td>`;
     tbody.appendChild(tr);
@@ -1296,6 +1340,125 @@ function abrirDet(row,tid,nombre,t,vend,dif,cnt){
     <div class="det-i"><label>Diferencia (cob − vend)</label><span style="color:${dc}">${Math.abs(dif)<0.01?'$0.00 ✓':(dif>0?'+':'')+fp(dif)}</span></div>
   </div></div>`;
   det.style.display='block';
+}
+
+function buildStoreDetailReport(tid){
+  const {inicio,fin}=rangoFechasSeleccionado();
+  const rutaFiltro=g('f-ruta').value;
+  const repartidorFiltro=g('f-repartidor').value;
+  const visitas=dV.filter(v=>
+    v.TIENDA_ID===tid&&
+    fechaEnRango(v.FECHA,inicio,fin)&&
+    (!rutaFiltro||v.RUTA_ID===rutaFiltro)&&
+    (!repartidorFiltro||v.REPARTIDOR_ID===repartidorFiltro)
+  );
+  const visitaIds=new Set(visitas.map(v=>v.VISITA_ID).filter(Boolean));
+  const detailIds=new Set();
+  const detalles=[];
+  dD.forEach((detail,index)=>{
+    if(!detail.VISITA_ID||!visitaIds.has(detail.VISITA_ID))return;
+    const uniqueKey=detail.DETALLE_ID?`id:${detail.DETALLE_ID}`:`row:${index}`;
+    if(detailIds.has(uniqueKey))return;
+    detailIds.add(uniqueKey);
+    detalles.push(detail);
+  });
+
+  const productos={};
+  detalles.forEach(detail=>{
+    const productoId=normalizeProductId(detail.PRODUCTO_ID)||'SIN_PRODUCTO';
+    if(!productos[productoId])productos[productoId]={productoId,unidades:0};
+    productos[productoId].unidades+=vendidoDetalle(detail);
+  });
+  const sabores=Object.values(productos).sort((a,b)=>productName(a.productoId).localeCompare(productName(b.productoId),'es'));
+  const totalUnidades=sabores.reduce((total,item)=>total+item.unidades,0);
+  const fechas=[...new Set(visitas.map(v=>normFecha(v.FECHA)).filter(Boolean))].sort();
+  const rutas=[...new Set(visitas.map(v=>v.RUTA_ID).filter(Boolean))].sort();
+  const repartidores=[...new Set(visitas.map(v=>v.REPARTIDOR_ID).filter(Boolean))];
+  const momentos=visitas
+    .map(v=>({fecha:normFecha(v.FECHA),hora:v.HORA_LLEGADA||''}))
+    .filter(item=>item.fecha||item.hora)
+    .sort((a,b)=>`${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
+  const conHora=momentos.filter(item=>item.hora);
+  let horario='Sin hora registrada';
+  if(conHora.length===1)horario=`${fd(conHora[0].fecha)} · ${conHora[0].hora}`;
+  else if(conHora.length>1){
+    const primera=conHora[0],ultima=conHora[conHora.length-1];
+    horario=`Primera: ${fd(primera.fecha)} · ${primera.hora} · Última: ${fd(ultima.fecha)} · ${ultima.hora}`;
+  }
+
+  return {
+    tiendaId:tid,
+    info:storeInfo(tid),
+    visitas,
+    detalles,
+    sabores,
+    totalUnidades,
+    fechas,
+    rutas,
+    repartidores,
+    horario
+  };
+}
+
+function abrirReporteDetalleTienda(tid){
+  const reporte=buildStoreDetailReport(tid);
+  const {info}=reporte;
+  const direccion=[info.direccion,info.colonia,info.municipio].filter((value,index,items)=>value&&items.indexOf(value)===index).join(' · ')||'Sin dirección registrada';
+  const datos=[
+    reporte.rutas.length?`Ruta: ${reporte.rutas.join(', ')}`:'',
+    reporte.repartidores.length?`Repartidor: ${reporte.repartidores.map(driverName).join(', ')}`:'',
+    info.zona?`Zona: ${info.zona}`:'',
+    info.encargado?`Encargado: ${info.encargado}`:'',
+    info.telefono?`Teléfono: ${info.telefono}`:'',
+    reporte.fechas.length?`Fechas: ${fd(reporte.fechas[0])}${reporte.fechas.length>1?` a ${fd(reporte.fechas[reporte.fechas.length-1])}`:''}`:''
+  ].filter(Boolean);
+  const flavorTags=reporte.sabores.map(item=>`<span class="gtag g${esc(item.productoId)}">${esc(PSHORT[item.productoId]||productName(item.productoId))}</span>`).join('');
+  const productRows=reporte.sabores.map(item=>`<tr><td>${esc(productName(item.productoId))}</td><td class="r">${item.unidades}</td></tr>`).join('');
+  const table=productRows
+    ? `<div class="store-detail-table-wrap"><table class="store-detail-table"><thead><tr><th>Producto / sabor</th><th class="r">Unidades</th></tr></thead><tbody>${productRows}</tbody><tfoot><tr><td>UNIDADES TOTALES</td><td class="r">${reporte.totalUnidades}</td></tr></tfoot></table></div>`
+    : '<div class="store-detail-empty">La tienda tiene visitas en el rango, pero no hay unidades registradas en visitDetails.</div>';
+
+  g('store-detail-body').innerHTML=`
+    <div class="store-detail-summary">
+      <div class="store-detail-block">
+        <span class="store-detail-label">Tienda</span>
+        <div class="store-detail-value">${esc(info.nombre||reporte.tiendaId)}</div>
+        <div class="store-detail-meta">${esc(reporte.tiendaId)} · ${reporte.visitas.length} visita${reporte.visitas.length===1?'':'s'}</div>
+      </div>
+      <div class="store-detail-block">
+        <span class="store-detail-label">Dirección y datos</span>
+        <div class="store-detail-value">${esc(direccion)}</div>
+        <div class="store-detail-meta">${datos.length?datos.map(esc).join(' · '):'Sin datos adicionales registrados'}</div>
+      </div>
+    </div>
+    <div class="store-detail-stats">
+      <div class="store-detail-stat">
+        <span class="store-detail-label">Galletas sabores</span>
+        <div class="store-detail-flavors">${flavorTags||'<span class="store-detail-meta">Sin sabores registrados</span>'}</div>
+      </div>
+      <div class="store-detail-stat">
+        <span class="store-detail-label">Unidades totales</span>
+        <strong>${reporte.totalUnidades}</strong>
+      </div>
+    </div>
+    <div class="store-detail-block" style="margin-bottom:14px">
+      <span class="store-detail-label">Hora de registro / visita</span>
+      <div class="store-detail-value">${esc(reporte.horario)}</div>
+    </div>
+    <div class="store-detail-label">Unidades por sabor</div>
+    ${table}`;
+  const overlay=g('store-detail-overlay');
+  overlay.classList.add('open');
+  document.body.classList.add('modal-open');
+  requestAnimationFrame(()=>overlay.querySelector('.store-detail-close')?.focus());
+}
+
+function cerrarReporteDetalleTienda(){
+  const overlay=g('store-detail-overlay');
+  if(!overlay)return;
+  overlay.classList.remove('open');
+  document.body.classList.remove('modal-open');
+  g('store-detail-body').innerHTML='';
 }
 
 function filtT(est,btn){
@@ -1782,6 +1945,10 @@ function stab(id,btn){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('act'));
   btn.classList.add('act');g('panel-'+id).classList.add('act');
 }
+
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&g('store-detail-overlay')?.classList.contains('open'))cerrarReporteDetalleTienda();
+});
 
 g('f-fecha-inicio').value=hoy();
 g('f-fecha-fin').value=hoy();
