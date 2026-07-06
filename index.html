@@ -144,9 +144,11 @@ tr:last-child td{border-bottom:none}
 .store-inline-name{font-size:14px;font-weight:700;color:var(--text)}
 .store-inline-address{max-width:540px;margin-top:3px;color:var(--text2);font-size:11px;line-height:1.45}
 .store-inline-context{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}
-.store-inline-context span,.store-inline-flavor{padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:var(--s);font-family:var(--mono);font-size:9px;color:var(--text2)}
+.store-inline-context span,.store-inline-flavor{padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:var(--s);font-family:var(--mono);color:var(--text2)}
+.store-inline-context span{font-size:9px}
+.store-inline-flavor{padding:6px 9px;font-size:12px}
 .store-inline-context b,.store-inline-flavor b{color:var(--text);font-weight:600}
-.store-inline-section-label{display:block;margin-bottom:6px;font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.store-inline-section-label{display:block;margin-bottom:7px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
 .store-inline-flavors{margin-bottom:11px}
 .store-inline-flavor-list{display:flex;gap:5px;flex-wrap:wrap}
 .store-inline-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;overflow:hidden;border:1px solid var(--border);border-radius:7px;background:var(--border)}
@@ -728,7 +730,7 @@ function normalizeDetails(rows){
   return rows.map(o=>{
     const ent=num(o,'entregado','deliveredQuantity','quantityDelivered','ENTREGADO');
     const dev=num(o,'devolucion','returnQuantity','returnedQuantity','DEVOLUCION');
-    const monto=num(o,'montoCobrado','amountCollected','subtotal','MONTO_COBRADO');
+    const monto=num(o,'montoCobrado','amountCollected','MONTO_COBRADO');
     const forma=val(o,'paymentMethod','formaPago','FORMA_PAGO');
     const pagado=val(o,'pagado','paid','PAGADO');
     const consignaObjetivo=num(o,'consignaObjetivo','CONSIGNA_OBJETIVO');
@@ -736,6 +738,8 @@ function normalizeDetails(rows){
     const vendidoCalculado=num(o,'vendidoCalculado','VENDIDO_CALCULADO');
     const esConsigna=!!consignaStatus||consignaObjetivo>0;
     const vendido=esConsigna?vendidoCalculado:Math.max(0,ent-dev);
+    const formaPendiente=String(forma||'').toUpperCase()==='PENDIENTE';
+    const esPagado=!formaPendiente&&(boolSi(pagado)||!!forma);
     return {
       DETALLE_ID: val(o,'detailId','DETALLE_ID','id'),
       VISITA_ID: val(o,'visitId','VISITA_ID'),
@@ -748,9 +752,9 @@ function normalizeDetails(rows){
       ENTREGADO: ent,
       DEVOLUCION: dev,
       INV_FINAL: num(o,'invFinal','availableAfter','INV_FINAL'),
-      MONTO_COBRADO: monto || (vendido*PX),
+      MONTO_COBRADO: monto || (esPagado?vendido*PX:0),
       FORMA_PAGO: forma,
-      PAGADO: boolSi(pagado) || (forma && String(forma).toUpperCase()!=='PENDIENTE') ? 'Sí':'No',
+      PAGADO: esPagado?'Sí':'No',
       CONSIGNA_OBJETIVO: consignaObjetivo,
       EXISTENCIA_ENCONTRADA: num(o,'existenciaEncontrada','EXISTENCIA_ENCONTRADA'),
       VENDIDO_CALCULADO: vendidoCalculado,
@@ -1231,7 +1235,7 @@ function renderizar(){
     const ent=entregadoDetalle(d),vend=vendidoDetalle(d),dev=money(d.DEVOLUCION),fin=money(d.INV_FINAL);
     tEnt+=ent;tVend+=vend;tFin+=fin;tDev+=dev;tCob+=+d.MONTO_COBRADO||0;
     const pagado=d.PAGADO==='Sí'||d.PAGADO==='Si'||d.PAGADO==='1';
-    if(!pagado)tPend+=+d.MONTO_COBRADO||0;
+    if(!pagado)tPend+=vend*PX;
   });
   const pV=tVend*PX,pF=tFin*PX,pct=tEnt>0?Math.round((tVend/tEnt)*100):0;
   // Pendiente por tienda (cuántas tiendas tienen al menos 1 detalle no pagado)
