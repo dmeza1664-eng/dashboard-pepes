@@ -680,25 +680,45 @@ function normalizeProductId(pid){
   return aliases[p]||p;
 }
 
+function visitTimeInfo(o){
+  const sources=[
+    ['arrivalTime',['arrivalTime','horaLlegada','HORA_LLEGADA']],
+    ['visitTime',['visitTime','horaVisita','visitedAt','VISIT_TIME','HORA_VISITA']],
+    ['checkInTime',['checkInTime','checkInAt','checkedInAt','horaCheckIn','CHECK_IN_TIME']],
+    ['registeredAt',['registeredAt','registered_at','horaRegistro','REGISTERED_AT','HORA_REGISTRO']]
+  ];
+  for(const [source,keys] of sources){
+    const raw=val(o,...keys);
+    if(raw===undefined||raw===null||raw==='')continue;
+    const hora=formatHora(raw);
+    if(hora)return {hora,source};
+  }
+  return {hora:'',source:''};
+}
+
 function normalizeVisits(rows){
-  return rows.map(o=>({
-    VISITA_ID: val(o,'visitId','VISITA_ID','id'),
-    FECHA: normFecha(val(o,'date','fecha','FECHA')),
-    RUTA_ID: val(o,'routeId','rutaId','RUTA_ID'),
-    TIENDA_ID: val(o,'storeId','tiendaId','TIENDA_ID'),
-    REPARTIDOR_ID: val(o,'repartidorId','driverId','repartidor','driverName','REPARTIDOR_ID','REPARTIDOR'),
-    HORA_LLEGADA: formatHora(val(o,'arrivalTime','horaLlegada','HORA_LLEGADA')||val(o,'createdAt','updatedAt')),
-    ESTADO: val(o,'status','estado','ESTADO'),
-    FORMA_PAGO: val(o,'paymentMethod','formaPago','FORMA_PAGO'),
-    PENDING_REASON: val(o,'pendingReason','motivoPendiente','PENDING_REASON'),
-    PENDING_NOTE: val(o,'pendingNote','observacionPendiente','PENDING_NOTE'),
-    TOTAL: num(o,'total','totalVendido','TOTAL'),
-    EFECTIVO: num(o,'efectivo','cash','EFECTIVO'),
-    TRANSFERENCIA: num(o,'transferencia','transfer','TRANSFERENCIA'),
-    PENDIENTE: num(o,'pendiente','pending','PENDIENTE'),
-    NO_OPEN_REASON: val(o,'noOpenReason','notOpenedReason','motivoNoAbrio','motivoNoAbrió','NO_OPEN_REASON'),
-    NO_OPEN_NOTE: val(o,'noOpenNote','notOpenedNote','observacionNoAbrio','observacionNoAbrió','NO_OPEN_NOTE')
-  })).filter(o=>o.VISITA_ID||o.TIENDA_ID);
+  return rows.map(o=>{
+    const visitTime=visitTimeInfo(o);
+    return {
+      VISITA_ID: val(o,'visitId','VISITA_ID','id'),
+      FECHA: normFecha(val(o,'date','fecha','FECHA')),
+      RUTA_ID: val(o,'routeId','rutaId','RUTA_ID'),
+      TIENDA_ID: val(o,'storeId','tiendaId','TIENDA_ID'),
+      REPARTIDOR_ID: val(o,'repartidorId','driverId','repartidor','driverName','REPARTIDOR_ID','REPARTIDOR'),
+      HORA_LLEGADA: visitTime.hora,
+      HORA_FUENTE: visitTime.source,
+      ESTADO: val(o,'status','estado','ESTADO'),
+      FORMA_PAGO: val(o,'paymentMethod','formaPago','FORMA_PAGO'),
+      PENDING_REASON: val(o,'pendingReason','motivoPendiente','PENDING_REASON'),
+      PENDING_NOTE: val(o,'pendingNote','observacionPendiente','PENDING_NOTE'),
+      TOTAL: num(o,'total','totalVendido','TOTAL'),
+      EFECTIVO: num(o,'efectivo','cash','EFECTIVO'),
+      TRANSFERENCIA: num(o,'transferencia','transfer','TRANSFERENCIA'),
+      PENDIENTE: num(o,'pendiente','pending','PENDIENTE'),
+      NO_OPEN_REASON: val(o,'noOpenReason','notOpenedReason','motivoNoAbrio','motivoNoAbrió','NO_OPEN_REASON'),
+      NO_OPEN_NOTE: val(o,'noOpenNote','notOpenedNote','observacionNoAbrio','observacionNoAbrió','NO_OPEN_NOTE')
+    };
+  }).filter(o=>o.VISITA_ID||o.TIENDA_ID);
 }
 
 function normalizeDetails(rows){
@@ -1394,8 +1414,10 @@ function renderTiendas(det){
     tr.title='Doble clic para abrir el reporte detalle de esta tienda';
     tr.onclick=()=>abrirDet(tr,tid,info.nombre,t,unidades,dif,cnt);
     tr.ondblclick=event=>{event.preventDefault();abrirReporteDetalleTienda(tid)};
-    const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:`<span style="color:var(--text3)">—</span>`;
-    tr.innerHTML=`<td><div class="tn">${esc(info.nombre)}</div><div class="tm">${esc(info.colonia||info.municipio||'—')}</div></td><td class="r">${horaStr}</td><td class="r">${unidades}</td><td class="r" style="color:var(--green)">${fp(venta)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td><span class="badge ${estadoBadge}"><span class="bdot"></span>${estadoLabel}</span></td><td><button class="store-action-btn" type="button">Ver detalle</button></td>`;
+    const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:`<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Sin hora</span>`;
+    const datoSecundario=info.colonia||info.direccion||info.municipio||'';
+    const datoSecundarioHtml=datoSecundario?`<div class="tm">${esc(datoSecundario)}</div>`:'';
+    tr.innerHTML=`<td><div class="tn">${esc(info.nombre)}</div>${datoSecundarioHtml}</td><td class="r">${horaStr}</td><td class="r">${unidades}</td><td class="r" style="color:var(--green)">${fp(venta)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td><span class="badge ${estadoBadge}"><span class="bdot"></span>${estadoLabel}</span></td><td><button class="store-action-btn" type="button">Ver detalle</button></td>`;
     tr.querySelector('.store-action-btn').onclick=event=>{event.stopPropagation();abrirDet(tr,tid,info.nombre,t,unidades,dif,cnt)};
     tbody.appendChild(tr);
   });
