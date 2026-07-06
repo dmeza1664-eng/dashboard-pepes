@@ -72,13 +72,7 @@ tr:last-child td{border-bottom:none}
 .gtag{display:inline-flex;font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px;margin:1px;font-weight:500;text-transform:uppercase;letter-spacing:.3px}
 .gGC001{background:rgba(0,255,157,.1);color:var(--green)}.gGA002{background:rgba(59,158,255,.1);color:var(--blue)}.gGN003{background:rgba(255,170,0,.1);color:var(--amber)}.gGAL004{background:rgba(255,74,110,.1);color:var(--red)}
 .gP001{background:rgba(0,255,157,.1);color:var(--green)}.gP002{background:rgba(59,158,255,.1);color:var(--blue)}.gP003{background:rgba(255,170,0,.1);color:var(--amber)}
-.det{background:var(--bg2);border-top:1px solid var(--border);padding:18px 20px;animation:sd .2s ease}
 @keyframes sd{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.det-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.det-t::before{content:'';width:3px;height:12px;background:var(--green);border-radius:2px}
-.det-g{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.det-i label{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;display:block;margin-bottom:5px}
-.det-i span{font-size:16px;font-weight:700}
 .pb{padding:4px 0}
 .pr{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--border)}
 .pr:last-child{border-bottom:none}
@@ -138,13 +132,29 @@ tr:last-child td{border-bottom:none}
 .store-filter{padding:5px 9px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text2);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.35px;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
 .store-filter:hover{border-color:var(--green);color:var(--green)}
 .store-filter.act{border-color:rgba(0,255,157,.25);background:rgba(0,255,157,.09);color:var(--green)}
-.store-time-warning{display:none;padding:8px 14px;border-bottom:1px solid rgba(255,170,0,.14);background:rgba(255,170,0,.045);color:#c9963f;font-family:var(--mono);font-size:10px;line-height:1.45}
 .store-table-scroll{overflow:auto}
 .store-main-table{min-width:880px}
 .store-main-table tfoot td{background:var(--s2);font-weight:700;color:var(--text)}
 .store-main-table tfoot .store-pending-total{color:var(--amber);font-family:var(--mono);font-size:10px;white-space:nowrap}
 .store-action-btn{padding:5px 9px;border:1px solid var(--border2);border-radius:5px;background:var(--s2);color:var(--text2);font-family:var(--mono);font-size:9px;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s}
 .store-action-btn:hover{border-color:var(--green);color:var(--green)}
+.store-inline-detail-row td{padding:0!important;background:var(--bg2);border-bottom:1px solid var(--border2)}
+.store-inline-detail{padding:14px 16px 16px;animation:sd .18s ease}
+.store-inline-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:12px}
+.store-inline-name{font-size:14px;font-weight:700;color:var(--text)}
+.store-inline-address{max-width:540px;margin-top:3px;color:var(--text2);font-size:11px;line-height:1.45}
+.store-inline-context{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.store-inline-context span,.store-inline-flavor{padding:4px 7px;border:1px solid var(--border);border-radius:5px;background:var(--s);font-family:var(--mono);font-size:9px;color:var(--text2)}
+.store-inline-context b,.store-inline-flavor b{color:var(--text);font-weight:600}
+.store-inline-section-label{display:block;margin-bottom:6px;font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.store-inline-flavors{margin-bottom:11px}
+.store-inline-flavor-list{display:flex;gap:5px;flex-wrap:wrap}
+.store-inline-metrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:1px;overflow:hidden;border:1px solid var(--border);border-radius:7px;background:var(--border)}
+.store-inline-metric{min-width:0;padding:9px 10px;background:var(--s)}
+.store-inline-metric span{display:block;margin-bottom:4px;font-family:var(--mono);font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px}
+.store-inline-metric strong{display:block;font-family:var(--mono);font-size:11px;color:var(--text);overflow-wrap:anywhere}
+.store-inline-metric.sold strong{color:var(--green)}
+.store-inline-metric.collected strong{color:var(--blue)}
 .store-detail-overlay{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,6,11,.78);backdrop-filter:blur(6px)}
 .store-detail-overlay.open{display:flex}
 .store-detail-modal{width:min(820px,100%);max-height:min(760px,calc(100vh - 40px));overflow:hidden;background:var(--s);border:1px solid var(--border2);border-radius:14px;box-shadow:0 28px 90px rgba(0,0,0,.52);animation:store-detail-in .18s ease}
@@ -175,8 +185,8 @@ tr:last-child td{border-bottom:none}
 body.modal-open{overflow:hidden}
 @keyframes store-detail-in{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:1100px){.store-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}.financial-state{align-items:flex-start;flex-direction:column;gap:4px}.financial-state-detail{text-align:left}.store-detail-meta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.store-table-tools{align-items:stretch;flex-direction:column}.store-search{max-width:none}.store-quick-filters{justify-content:flex-start}}
-@media(max-width:560px){.store-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.store-summary-item{padding:10px 11px}.store-summary-item strong{font-size:15px}.store-detail-overlay{align-items:flex-end;padding:0}.store-detail-modal{max-height:92vh;border-radius:14px 14px 0 0}.store-detail-head{padding:15px 16px}.store-detail-head h2{font-size:16px}.store-detail-body{max-height:calc(92vh - 68px);padding:12px 12px 16px}.store-detail-store{display:block;padding:11px 12px}.store-detail-id{margin-top:5px}.store-detail-meta-item{padding:9px 11px}.store-detail-table{min-width:340px}}
+@media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}.financial-state{align-items:flex-start;flex-direction:column;gap:4px}.financial-state-detail{text-align:left}.store-detail-meta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.store-table-tools{align-items:stretch;flex-direction:column}.store-search{max-width:none}.store-quick-filters{justify-content:flex-start}.store-inline-head{display:block}.store-inline-context{justify-content:flex-start;margin-top:9px}.store-inline-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:560px){.store-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.store-summary-item{padding:10px 11px}.store-summary-item strong{font-size:15px}.store-detail-overlay{align-items:flex-end;padding:0}.store-detail-modal{max-height:92vh;border-radius:14px 14px 0 0}.store-detail-head{padding:15px 16px}.store-detail-head h2{font-size:16px}.store-detail-body{max-height:calc(92vh - 68px);padding:12px 12px 16px}.store-detail-store{display:block;padding:11px 12px}.store-detail-id{margin-top:5px}.store-detail-meta-item{padding:9px 11px}.store-detail-table{min-width:340px}.store-inline-detail{padding:12px}.store-inline-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -322,7 +332,6 @@ body.modal-open{overflow:hidden}
           <button class="store-filter" type="button" data-filter="sin_venta" onclick="filtT('sin_venta',this)">Sin venta</button>
         </div>
       </div>
-      <div class="store-time-warning" id="store-time-warning" role="status">Las horas pueden no representar la visita real.</div>
       <div class="store-table-scroll">
         <table id="t-tiendas" class="store-main-table" style="display:none">
           <thead><tr><th>Tienda / Colonia</th><th class="r">Hora</th><th class="r">Unidades totales</th><th class="r">Venta $</th><th class="r">Cobrado $</th><th>Estado</th><th>Acción</th></tr></thead>
@@ -330,7 +339,6 @@ body.modal-open{overflow:hidden}
           <tfoot id="f-tiendas"></tfoot>
         </table>
       </div>
-      <div id="det-t" style="display:none"></div>
       <div class="empty" id="e-tiendas" style="display:none">Sin datos</div>
     </div>
     <div class="card">
@@ -689,31 +697,6 @@ function visitTimeInfo(o){
   const hora=formatHora(raw);
   if(hora)return {hora,source:'arrivalTime'};
   return {hora:'',source:''};
-}
-
-function timeToMinutes(value){
-  const match=String(value||'').match(/^(\d{2}):(\d{2})$/);
-  if(!match)return null;
-  return Number(match[1])*60+Number(match[2]);
-}
-
-function hasSuspiciousVisitTimes(visits){
-  const groups={};
-  visits.forEach(visit=>{
-    const minutes=timeToMinutes(visit.HORA_LLEGADA);
-    if(minutes===null||!visit.TIENDA_ID)return;
-    const key=`${visit.FECHA||''}|${visit.RUTA_ID||''}`;
-    if(!groups[key])groups[key]=new Map();
-    if(!groups[key].has(visit.TIENDA_ID))groups[key].set(visit.TIENDA_ID,minutes);
-  });
-  return Object.values(groups).some(storeTimes=>{
-    const times=[...storeTimes.values()].sort((a,b)=>a-b);
-    if(times.length<2)return false;
-    if(new Set(times).size<times.length)return true;
-    if(times.length<4)return false;
-    const closeIntervals=times.slice(1).filter((time,index)=>time-times[index]<=1).length;
-    return closeIntervals>=3;
-  });
 }
 
 function normalizeVisits(rows){
@@ -1367,14 +1350,12 @@ function renderRutas(det){
 function renderTiendas(det){
   g('t-load').style.display='none';
   const tbody=g('b-tiendas');tbody.innerHTML='';
-  g('det-t').style.display='none';
   const por={};
   const {inicio,fin}=rangoFechasSeleccionado();
   const rutaFiltro=g('f-ruta').value,repartidorFiltro=g('f-repartidor').value;
   const visitasVisibles=dV
     .filter(v=>fechaEnRango(v.FECHA,inicio,fin)&&(!rutaFiltro||v.RUTA_ID===rutaFiltro)&&(!repartidorFiltro||v.REPARTIDOR_ID===repartidorFiltro))
     .sort((a,b)=>`${a.FECHA} ${a.HORA_LLEGADA}`.localeCompare(`${b.FECHA} ${b.HORA_LLEGADA}`));
-  g('store-time-warning').style.display=hasSuspiciousVisitTimes(visitasVisibles)?'block':'none';
   visitasVisibles.forEach(v=>{
     if(!v.TIENDA_ID)return;
     if(!por[v.TIENDA_ID])por[v.TIENDA_ID]={normalSold:0,consignmentSold:0,dev:0,cob:0,pending:0,paidDetails:0,unpaidDetails:0,hasConsignment:false,prods:[],hora:''};
@@ -1420,9 +1401,7 @@ function renderTiendas(det){
   if(!filas.length){g('t-tiendas').style.display='none';g('e-tiendas').textContent='Sin datos';g('e-tiendas').style.display='block';g('f-tiendas').innerHTML='';return}
   g('e-tiendas').style.display='none';
   filas.forEach(({tid,t,unidades,venta,estado,estadoLabel,estadoBadge})=>{
-    const dif=+(t.cob-venta).toFixed(2);
     const info=dT[tid]||{nombre:tid,municipio:'',colonia:''};
-    const cnt={};t.prods.forEach(p=>{cnt[p]=(cnt[p]||0)+1});
     const tr=document.createElement('tr');tr.className='trc store-row-detail';
     tr.dataset.estado=estado;
     tr.dataset.devolucion=t.dev>0?'1':'0';
@@ -1433,36 +1412,69 @@ function renderTiendas(det){
     tr.dataset.cobrado=t.cob;
     tr.dataset.pendiente=t.pending;
     tr.title='Doble clic para abrir el reporte detalle de esta tienda';
-    tr.onclick=()=>abrirDet(tr,tid,info.nombre,t,unidades,dif,cnt);
-    tr.ondblclick=event=>{event.preventDefault();abrirReporteDetalleTienda(tid)};
-    const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:`<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Sin hora real</span>`;
+    tr.onclick=()=>abrirDet(tr,tid,info.nombre,t,unidades,estadoLabel);
+    tr.ondblclick=event=>{event.preventDefault();cerrarDetalleTiendaInline();abrirReporteDetalleTienda(tid)};
+    const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:'';
     const datoSecundario=info.colonia||info.direccion||info.municipio||'';
     const datoSecundarioHtml=datoSecundario?`<div class="tm">${esc(datoSecundario)}</div>`:'';
     tr.innerHTML=`<td><div class="tn">${esc(info.nombre)}</div>${datoSecundarioHtml}</td><td class="r">${horaStr}</td><td class="r">${unidades}</td><td class="r" style="color:var(--green)">${fp(venta)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td><span class="badge ${estadoBadge}"><span class="bdot"></span>${estadoLabel}</span></td><td><button class="store-action-btn" type="button">Ver detalle</button></td>`;
-    tr.querySelector('.store-action-btn').onclick=event=>{event.stopPropagation();abrirDet(tr,tid,info.nombre,t,unidades,dif,cnt)};
+    tr.querySelector('.store-action-btn').onclick=event=>{event.stopPropagation();abrirDet(tr,tid,info.nombre,t,unidades,estadoLabel)};
     tbody.appendChild(tr);
   });
   g('t-tiendas').style.display='table';
   aplicarFiltrosTiendas();
 }
 
-function abrirDet(row,tid,nombre,t,vend,dif,cnt){
-  document.querySelectorAll('#b-tiendas tr').forEach(r=>r.classList.remove('sel'));
-  const det=g('det-t');
-  if(det.dataset.abierto===tid){det.style.display='none';det.dataset.abierto='';return}
-  row.classList.add('sel');det.dataset.abierto=tid;
-  const tags=Object.entries(cnt).map(([k,v])=>`<span class="gtag g${k}">${PNOM[k]||k} ×${v}</span>`).join(' ');
-  const dc=Math.abs(dif)<0.01?'var(--green)':Math.abs(dif)<=2?'var(--amber)':'var(--red)';
-  det.innerHTML=`<div class="det"><div class="det-t">${nombre}</div><div class="det-g">
-    <div class="det-i"><label>Galletas</label><div style="margin-top:6px;line-height:2">${tags}</div></div>
-    <div class="det-i"><label>Venta normal</label><span style="color:var(--blue)">${t.normalSold} pzas · ${fp(t.normalSold*PX)}</span></div>
-    <div class="det-i"><label>Venta de consigna</label><span style="color:var(--purple)">${t.consignmentSold} pzas · ${fp(t.consignmentSold*PX)}</span></div>
-    <div class="det-i"><label>Devuelto</label><span style="color:var(--amber)">${t.dev} paq · ${fp(t.dev*PX)}</span></div>
-    <div class="det-i"><label>Vendido total</label><span style="color:var(--green)">${vend} pzas · ${fp(vend*PX)}</span></div>
-    <div class="det-i"><label>Cobrado</label><span style="color:var(--blue)">${fp(t.cob)}</span></div>
-    <div class="det-i"><label>Diferencia (cob − vend)</label><span style="color:${dc}">${Math.abs(dif)<0.01?'$0.00 ✓':(dif>0?'+':'')+fp(dif)}</span></div>
-  </div></div>`;
-  det.style.display='block';
+function cerrarDetalleTiendaInline(){
+  document.querySelector('#b-tiendas .store-inline-detail-row')?.remove();
+  document.querySelectorAll('#b-tiendas tr.store-row-detail').forEach(row=>{
+    row.classList.remove('sel');
+    const button=row.querySelector('.store-action-btn');
+    if(button)button.textContent='Ver detalle';
+  });
+}
+
+function abrirDet(row,tid,nombre,t,vend,estadoLabel){
+  if(row.nextElementSibling?.classList.contains('store-inline-detail-row')){
+    cerrarDetalleTiendaInline();
+    return;
+  }
+  cerrarDetalleTiendaInline();
+  const reporte=buildStoreDetailReport(tid);
+  const info=reporte.info;
+  const direccion=[info.direccion,info.colonia,info.municipio,info.zona?`Zona ${info.zona}`:'']
+    .filter((value,index,items)=>value&&items.indexOf(value)===index)
+    .join(' · ')||'Sin dirección registrada';
+  const ruta=reporte.rutas.length?reporte.rutas.join(', '):'—';
+  const repartidor=reporte.repartidores.length?reporte.repartidores.map(driverName).join(', '):'—';
+  const fecha=reporte.fechas.length?`${fd(reporte.fechas[0])}${reporte.fechas.length>1?` a ${fd(reporte.fechas[reporte.fechas.length-1])}`:''}`:'—';
+  const horas=[...new Set(reporte.visitas.map(visita=>visita.HORA_LLEGADA).filter(Boolean))].sort();
+  const hora=horas.length===1?horas[0]:horas.length>1?`${horas[0]} a ${horas[horas.length-1]}`:'';
+  const sabores=reporte.sabores.length
+    ? reporte.sabores.map(item=>`<span class="store-inline-flavor"><b>${esc(productName(item.productoId))}</b> ${item.unidades}</span>`).join('')
+    : '<span class="store-inline-flavor">Sin unidades registradas</span>';
+  const detailRow=document.createElement('tr');
+  detailRow.className='store-inline-detail-row';
+  detailRow.innerHTML=`<td colspan="7"><div class="store-inline-detail">
+    <div class="store-inline-head">
+      <div><div class="store-inline-name">${esc(nombre||tid)}</div><div class="store-inline-address">Dirección: ${esc(direccion)}</div></div>
+      <div class="store-inline-context">
+        <span>Ruta <b>${esc(ruta)}</b></span><span>Repartidor <b>${esc(repartidor)}</b></span><span>Fecha <b>${esc(fecha)}</b></span>${hora?`<span>Hora <b>${esc(hora)}</b></span>`:''}
+      </div>
+    </div>
+    <div class="store-inline-flavors"><span class="store-inline-section-label">Unidades por sabor</span><div class="store-inline-flavor-list">${sabores}</div></div>
+    <div class="store-inline-metrics">
+      <div class="store-inline-metric"><span>Venta normal</span><strong>${t.normalSold} pzas · ${fp(t.normalSold*PX)}</strong></div>
+      <div class="store-inline-metric"><span>Venta consigna</span><strong>${t.consignmentSold} pzas · ${fp(t.consignmentSold*PX)}</strong></div>
+      <div class="store-inline-metric"><span>Devuelto</span><strong>${t.dev} pzas · ${fp(t.dev*PX)}</strong></div>
+      <div class="store-inline-metric sold"><span>Vendido $</span><strong>${fp(vend*PX)}</strong></div>
+      <div class="store-inline-metric collected"><span>Cobrado $</span><strong>${fp(t.cob)}</strong></div>
+      <div class="store-inline-metric"><span>Estado</span><strong>${esc(estadoLabel)}</strong></div>
+    </div>
+  </div></td>`;
+  row.classList.add('sel');
+  row.querySelector('.store-action-btn').textContent='Ocultar detalle';
+  row.insertAdjacentElement('afterend',detailRow);
 }
 
 function buildStoreDetailReport(tid){
@@ -1502,7 +1514,7 @@ function buildStoreDetailReport(tid){
     .filter(item=>item.fecha||item.hora)
     .sort((a,b)=>`${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
   const conHora=momentos.filter(item=>item.hora);
-  let horario='Sin hora real';
+  let horario='';
   if(conHora.length===1)horario=`${fd(conHora[0].fecha)} · ${conHora[0].hora}`;
   else if(conHora.length>1){
     const primera=conHora[0],ultima=conHora[conHora.length-1];
@@ -1534,6 +1546,7 @@ function abrirReporteDetalleTienda(tid){
   const table=productRows
     ? `<div class="store-detail-table-wrap"><table class="store-detail-table"><thead><tr><th>Producto / sabor</th><th class="r">Unidades</th></tr></thead><tbody>${productRows}</tbody><tfoot><tr><td>UNIDADES TOTALES</td><td class="r">${reporte.totalUnidades}</td></tr></tfoot></table></div>`
     : '<div class="store-detail-empty">La tienda tiene visitas en el rango, pero no hay unidades registradas en visitDetails.</div>';
+  const horaMeta=reporte.horario?`<div class="store-detail-meta-item"><span class="store-detail-label">Hora de visita</span><strong>${esc(reporte.horario)}</strong></div>`:'';
 
   g('store-detail-body').innerHTML=`
     <div class="store-detail-overview">
@@ -1548,7 +1561,7 @@ function abrirReporteDetalleTienda(tid){
         <div class="store-detail-meta-item"><span class="store-detail-label">Ruta</span><strong>${esc(ruta)}</strong></div>
         <div class="store-detail-meta-item"><span class="store-detail-label">Repartidor</span><strong>${esc(repartidor)}</strong></div>
         <div class="store-detail-meta-item"><span class="store-detail-label">Fecha</span><strong>${esc(fecha)}</strong></div>
-        <div class="store-detail-meta-item"><span class="store-detail-label">Hora de visita</span><strong>${esc(reporte.horario)}</strong></div>
+        ${horaMeta}
         <div class="store-detail-meta-item"><span class="store-detail-label">Teléfono</span><strong>${esc(info.telefono||'—')}</strong></div>
         <div class="store-detail-meta-item total"><span class="store-detail-label">Total de unidades</span><strong>${reporte.totalUnidades}</strong></div>
       </div>
@@ -1575,10 +1588,11 @@ function filtT(est,btn){
 }
 
 function aplicarFiltrosTiendas(){
+  cerrarDetalleTiendaInline();
   const query=String(g('f-tienda-buscar')?.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
   const filtro=document.querySelector('.store-filter.act')?.dataset.filter||'todas';
   const totales={tiendas:0,unidades:0,venta:0,cobrado:0,pendiente:0};
-  document.querySelectorAll('#b-tiendas tr').forEach(tr=>{
+  document.querySelectorAll('#b-tiendas tr.store-row-detail').forEach(tr=>{
     const coincideTexto=!query||tr.dataset.buscar.includes(query);
     const coincideFiltro=
       filtro==='todas'||
@@ -1599,7 +1613,6 @@ function aplicarFiltrosTiendas(){
   const empty=g('e-tiendas');
   empty.textContent='No hay tiendas para la búsqueda o filtro seleccionado';
   empty.style.display=totales.tiendas?'none':'block';
-  g('det-t').style.display='none';
 }
 
 function renderProductos(det){
