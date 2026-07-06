@@ -138,6 +138,7 @@ tr:last-child td{border-bottom:none}
 .store-filter{padding:5px 9px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text2);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.35px;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
 .store-filter:hover{border-color:var(--green);color:var(--green)}
 .store-filter.act{border-color:rgba(0,255,157,.25);background:rgba(0,255,157,.09);color:var(--green)}
+.store-time-warning{display:none;padding:8px 14px;border-bottom:1px solid rgba(255,170,0,.14);background:rgba(255,170,0,.045);color:#c9963f;font-family:var(--mono);font-size:10px;line-height:1.45}
 .store-table-scroll{overflow:auto}
 .store-main-table{min-width:880px}
 .store-main-table tfoot td{background:var(--s2);font-weight:700;color:var(--text)}
@@ -321,6 +322,7 @@ body.modal-open{overflow:hidden}
           <button class="store-filter" type="button" data-filter="sin_venta" onclick="filtT('sin_venta',this)">Sin venta</button>
         </div>
       </div>
+      <div class="store-time-warning" id="store-time-warning" role="status">Las horas pueden corresponder al registro/importación y no a la visita real.</div>
       <div class="store-table-scroll">
         <table id="t-tiendas" class="store-main-table" style="display:none">
           <thead><tr><th>Tienda / Colonia</th><th class="r">Hora</th><th class="r">Unidades totales</th><th class="r">Venta $</th><th class="r">Cobrado $</th><th>Estado</th><th>Acción</th></tr></thead>
@@ -681,19 +683,37 @@ function normalizeProductId(pid){
 }
 
 function visitTimeInfo(o){
-  const sources=[
-    ['arrivalTime',['arrivalTime','horaLlegada','HORA_LLEGADA']],
-    ['visitTime',['visitTime','horaVisita','visitedAt','VISIT_TIME','HORA_VISITA']],
-    ['checkInTime',['checkInTime','checkInAt','checkedInAt','horaCheckIn','CHECK_IN_TIME']],
-    ['registeredAt',['registeredAt','registered_at','horaRegistro','REGISTERED_AT','HORA_REGISTRO']]
-  ];
-  for(const [source,keys] of sources){
-    const raw=val(o,...keys);
-    if(raw===undefined||raw===null||raw==='')continue;
-    const hora=formatHora(raw);
-    if(hora)return {hora,source};
-  }
+  // La app Android guarda arrivalTime con el reloj del dispositivo al registrar cada visita.
+  // El importador deja arrivalTime vacío; nunca se usan createdAt, updatedAt ni timestamps de sincronización.
+  const raw=val(o,'arrivalTime','horaLlegada','HORA_LLEGADA');
+  const hora=formatHora(raw);
+  if(hora)return {hora,source:'arrivalTime'};
   return {hora:'',source:''};
+}
+
+function timeToMinutes(value){
+  const match=String(value||'').match(/^(\d{2}):(\d{2})$/);
+  if(!match)return null;
+  return Number(match[1])*60+Number(match[2]);
+}
+
+function hasSuspiciousVisitTimes(visits){
+  const groups={};
+  visits.forEach(visit=>{
+    const minutes=timeToMinutes(visit.HORA_LLEGADA);
+    if(minutes===null||!visit.TIENDA_ID)return;
+    const key=`${visit.FECHA||''}|${visit.RUTA_ID||''}`;
+    if(!groups[key])groups[key]=new Map();
+    if(!groups[key].has(visit.TIENDA_ID))groups[key].set(visit.TIENDA_ID,minutes);
+  });
+  return Object.values(groups).some(storeTimes=>{
+    const times=[...storeTimes.values()].sort((a,b)=>a-b);
+    if(times.length<2)return false;
+    if(new Set(times).size<times.length)return true;
+    if(times.length<4)return false;
+    const closeIntervals=times.slice(1).filter((time,index)=>time-times[index]<=1).length;
+    return closeIntervals>=3;
+  });
 }
 
 function normalizeVisits(rows){
@@ -1354,6 +1374,7 @@ function renderTiendas(det){
   const visitasVisibles=dV
     .filter(v=>fechaEnRango(v.FECHA,inicio,fin)&&(!rutaFiltro||v.RUTA_ID===rutaFiltro)&&(!repartidorFiltro||v.REPARTIDOR_ID===repartidorFiltro))
     .sort((a,b)=>`${a.FECHA} ${a.HORA_LLEGADA}`.localeCompare(`${b.FECHA} ${b.HORA_LLEGADA}`));
+  g('store-time-warning').style.display=hasSuspiciousVisitTimes(visitasVisibles)?'block':'none';
   visitasVisibles.forEach(v=>{
     if(!v.TIENDA_ID)return;
     if(!por[v.TIENDA_ID])por[v.TIENDA_ID]={normalSold:0,consignmentSold:0,dev:0,cob:0,pending:0,paidDetails:0,unpaidDetails:0,hasConsignment:false,prods:[],hora:''};
@@ -1414,7 +1435,7 @@ function renderTiendas(det){
     tr.title='Doble clic para abrir el reporte detalle de esta tienda';
     tr.onclick=()=>abrirDet(tr,tid,info.nombre,t,unidades,dif,cnt);
     tr.ondblclick=event=>{event.preventDefault();abrirReporteDetalleTienda(tid)};
-    const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:`<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Sin hora</span>`;
+    const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:`<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Sin hora real</span>`;
     const datoSecundario=info.colonia||info.direccion||info.municipio||'';
     const datoSecundarioHtml=datoSecundario?`<div class="tm">${esc(datoSecundario)}</div>`:'';
     tr.innerHTML=`<td><div class="tn">${esc(info.nombre)}</div>${datoSecundarioHtml}</td><td class="r">${horaStr}</td><td class="r">${unidades}</td><td class="r" style="color:var(--green)">${fp(venta)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td><span class="badge ${estadoBadge}"><span class="bdot"></span>${estadoLabel}</span></td><td><button class="store-action-btn" type="button">Ver detalle</button></td>`;
@@ -1481,7 +1502,7 @@ function buildStoreDetailReport(tid){
     .filter(item=>item.fecha||item.hora)
     .sort((a,b)=>`${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
   const conHora=momentos.filter(item=>item.hora);
-  let horario='Sin hora registrada';
+  let horario='Sin hora real';
   if(conHora.length===1)horario=`${fd(conHora[0].fecha)} · ${conHora[0].hora}`;
   else if(conHora.length>1){
     const primera=conHora[0],ultima=conHora[conHora.length-1];
