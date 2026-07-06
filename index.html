@@ -123,6 +123,27 @@ tr:last-child td{border-bottom:none}
 .rep-head{padding:16px 20px;display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;background:var(--s2);border-bottom:1px solid var(--border)}
 .rep-title{font-size:17px;font-weight:700}.rep-meta{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:4px}
 .rep-mets{display:flex;gap:18px;flex-wrap:wrap}.rep-met{min-width:105px}.rep-met label{display:block;font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:4px}.rep-met strong{font-family:var(--mono);font-size:13px}
+.store-summary-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.store-summary-item{min-width:0;padding:13px 14px;background:var(--s);border:1px solid var(--border);border-radius:10px}
+.store-summary-item span{display:block;margin-bottom:7px;font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px}
+.store-summary-item strong{display:block;font-family:var(--mono);font-size:18px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.store-summary-item.primary strong{color:var(--green)}
+.store-summary-item.warning strong{color:var(--amber)}
+.store-table-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.store-search{flex:1;max-width:320px}
+.store-search input{width:100%;height:34px;padding:0 11px;background:var(--s);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--display);font-size:13px;outline:none}
+.store-search input:focus{border-color:var(--green)}
+.store-search input::placeholder{color:var(--text3)}
+.store-quick-filters{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.store-filter{padding:5px 9px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text2);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.35px;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.store-filter:hover{border-color:var(--green);color:var(--green)}
+.store-filter.act{border-color:rgba(0,255,157,.25);background:rgba(0,255,157,.09);color:var(--green)}
+.store-table-scroll{overflow:auto}
+.store-main-table{min-width:880px}
+.store-main-table tfoot td{background:var(--s2);font-weight:700;color:var(--text)}
+.store-main-table tfoot .store-pending-total{color:var(--amber);font-family:var(--mono);font-size:10px;white-space:nowrap}
+.store-action-btn{padding:5px 9px;border:1px solid var(--border2);border-radius:5px;background:var(--s2);color:var(--text2);font-family:var(--mono);font-size:9px;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s}
+.store-action-btn:hover{border-color:var(--green);color:var(--green)}
 .store-detail-overlay{position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(3,6,11,.78);backdrop-filter:blur(6px)}
 .store-detail-overlay.open{display:flex}
 .store-detail-modal{width:min(820px,100%);max-height:min(760px,calc(100vh - 40px));overflow:hidden;background:var(--s);border:1px solid var(--border2);border-radius:14px;box-shadow:0 28px 90px rgba(0,0,0,.52);animation:store-detail-in .18s ease}
@@ -152,8 +173,9 @@ tr:last-child td{border-bottom:none}
 .store-row-detail{cursor:pointer}
 body.modal-open{overflow:hidden}
 @keyframes store-detail-in{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
-@media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}.financial-state{align-items:flex-start;flex-direction:column;gap:4px}.financial-state-detail{text-align:left}.store-detail-meta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.store-detail-overlay{align-items:flex-end;padding:0}.store-detail-modal{max-height:92vh;border-radius:14px 14px 0 0}.store-detail-head{padding:15px 16px}.store-detail-head h2{font-size:16px}.store-detail-body{max-height:calc(92vh - 68px);padding:12px 12px 16px}.store-detail-store{display:block;padding:11px 12px}.store-detail-id{margin-top:5px}.store-detail-meta-item{padding:9px 11px}.store-detail-table{min-width:340px}}
+@media(max-width:1100px){.store-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}.financial-state{align-items:flex-start;flex-direction:column;gap:4px}.financial-state-detail{text-align:left}.store-detail-meta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.store-table-tools{align-items:stretch;flex-direction:column}.store-search{max-width:none}.store-quick-filters{justify-content:flex-start}}
+@media(max-width:560px){.store-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.store-summary-item{padding:10px 11px}.store-summary-item strong{font-size:15px}.store-detail-overlay{align-items:flex-end;padding:0}.store-detail-modal{max-height:92vh;border-radius:14px 14px 0 0}.store-detail-head{padding:15px 16px}.store-detail-head h2{font-size:16px}.store-detail-body{max-height:calc(92vh - 68px);padding:12px 12px 16px}.store-detail-store{display:block;padding:11px 12px}.store-detail-id{margin-top:5px}.store-detail-meta-item{padding:9px 11px}.store-detail-table{min-width:340px}}
 </style>
 </head>
 <body>
@@ -277,13 +299,35 @@ body.modal-open{overflow:hidden}
   </div>
 
   <div id="panel-tiendas" class="panel">
+    <div class="store-summary-grid" aria-label="Resumen por tienda">
+      <div class="store-summary-item"><span>Tiendas visitadas</span><strong id="st-visitadas">—</strong></div>
+      <div class="store-summary-item primary"><span>Unidades vendidas</span><strong id="st-unidades">—</strong></div>
+      <div class="store-summary-item primary"><span>Venta total</span><strong id="st-venta">—</strong></div>
+      <div class="store-summary-item"><span>Cobrado total</span><strong id="st-cobrado">—</strong></div>
+      <div class="store-summary-item warning"><span>Pendiente por cobrar</span><strong id="st-pendiente">—</strong></div>
+      <div class="store-summary-item warning"><span>Tiendas no pagadas</span><strong id="st-no-pagadas">—</strong></div>
+    </div>
     <div class="card">
       <div class="ch"><div class="ct">Detalle por tienda</div><div class="cs">clic para desglose · doble clic para reporte detalle · <span id="ct-t"></span></div></div>
       <div id="t-load" class="load"><div class="spin"></div>Cargando...</div>
-      <table id="t-tiendas" style="display:none">
-        <thead><tr><th>Tienda / Colonia</th><th>Galletas</th><th class="r">Hora</th><th class="r">Venta normal</th><th class="r">Venta consigna</th><th class="r">Devuelto</th><th class="r">Vendido $</th><th class="r">Cobrado $</th><th class="r">Pagado</th><th>Estado</th></tr></thead>
-        <tbody id="b-tiendas"></tbody>
-      </table>
+      <div class="store-table-tools">
+        <div class="store-search"><input type="search" id="f-tienda-buscar" placeholder="Buscar tienda o colonia..." oninput="aplicarFiltrosTiendas()" aria-label="Buscar tienda"></div>
+        <div class="store-quick-filters" aria-label="Filtros rápidos por tienda">
+          <button class="store-filter act" type="button" data-filter="todas" onclick="filtT('todas',this)">Todas</button>
+          <button class="store-filter" type="button" data-filter="pagada" onclick="filtT('pagada',this)">Pagadas</button>
+          <button class="store-filter" type="button" data-filter="no_pagada" onclick="filtT('no_pagada',this)">No pagadas</button>
+          <button class="store-filter" type="button" data-filter="devolucion" onclick="filtT('devolucion',this)">Con devolución</button>
+          <button class="store-filter" type="button" data-filter="consigna" onclick="filtT('consigna',this)">Con consigna</button>
+          <button class="store-filter" type="button" data-filter="sin_venta" onclick="filtT('sin_venta',this)">Sin venta</button>
+        </div>
+      </div>
+      <div class="store-table-scroll">
+        <table id="t-tiendas" class="store-main-table" style="display:none">
+          <thead><tr><th>Tienda / Colonia</th><th class="r">Hora</th><th class="r">Unidades totales</th><th class="r">Venta $</th><th class="r">Cobrado $</th><th>Estado</th><th>Acción</th></tr></thead>
+          <tbody id="b-tiendas"></tbody>
+          <tfoot id="f-tiendas"></tfoot>
+        </table>
+      </div>
       <div id="det-t" style="display:none"></div>
       <div class="empty" id="e-tiendas" style="display:none">Sin datos</div>
     </div>
@@ -1285,45 +1329,78 @@ function renderTiendas(det){
   const tbody=g('b-tiendas');tbody.innerHTML='';
   g('det-t').style.display='none';
   const por={};
-  const horaMap={};
-  const visitasVisibles=new Set(det.map(d=>d.VISITA_ID).filter(Boolean));
-  dV.forEach(v=>{if(visitasVisibles.has(v.VISITA_ID)&&v.TIENDA_ID&&v.HORA_LLEGADA)horaMap[v.TIENDA_ID]=v.HORA_LLEGADA});
+  const {inicio,fin}=rangoFechasSeleccionado();
+  const rutaFiltro=g('f-ruta').value,repartidorFiltro=g('f-repartidor').value;
+  const visitasVisibles=dV
+    .filter(v=>fechaEnRango(v.FECHA,inicio,fin)&&(!rutaFiltro||v.RUTA_ID===rutaFiltro)&&(!repartidorFiltro||v.REPARTIDOR_ID===repartidorFiltro))
+    .sort((a,b)=>`${a.FECHA} ${a.HORA_LLEGADA}`.localeCompare(`${b.FECHA} ${b.HORA_LLEGADA}`));
+  visitasVisibles.forEach(v=>{
+    if(!v.TIENDA_ID)return;
+    if(!por[v.TIENDA_ID])por[v.TIENDA_ID]={normalSold:0,consignmentSold:0,dev:0,cob:0,pending:0,paidDetails:0,unpaidDetails:0,hasConsignment:false,prods:[],hora:''};
+    if(!por[v.TIENDA_ID].hora&&v.HORA_LLEGADA)por[v.TIENDA_ID].hora=v.HORA_LLEGADA;
+  });
   det.forEach(d=>{
     const tid=d.TIENDA_ID||'?';
-    if(!por[tid])por[tid]={normalSold:0,consignmentSold:0,dev:0,cob:0,pag:0,prods:[],hora:''};
-    if(esDetalleConsigna(d))por[tid].consignmentSold+=vendidoDetalle(d);
-    else por[tid].normalSold+=vendidoDetalle(d);
+    if(!por[tid])por[tid]={normalSold:0,consignmentSold:0,dev:0,cob:0,pending:0,paidDetails:0,unpaidDetails:0,hasConsignment:false,prods:[],hora:''};
+    const unidades=vendidoDetalle(d);
+    if(esDetalleConsigna(d)){por[tid].consignmentSold+=unidades;por[tid].hasConsignment=true}
+    else por[tid].normalSold+=unidades;
     por[tid].dev+=money(d.DEVOLUCION);
     por[tid].cob+=+d.MONTO_COBRADO||0;
-    if(!por[tid].hora&&horaMap[tid])por[tid].hora=horaMap[tid];
-    if(d.PAGADO==='Sí'||d.PAGADO==='Si'||d.PAGADO==='1')por[tid].pag=1;
+    if(unidades>0){
+      if(estaPagado(d))por[tid].paidDetails+=1;
+      else{por[tid].unpaidDetails+=1;por[tid].pending+=+d.MONTO_COBRADO||unidades*PX}
+    }
     if(d.PRODUCTO_ID)por[tid].prods.push(d.PRODUCTO_ID);
   });
-  const filas=Object.entries(por).sort((a,b)=>(b[1].normalSold+b[1].consignmentSold)-(a[1].normalSold+a[1].consignmentSold));
+  const filas=Object.entries(por).map(([tid,t])=>{
+    const unidades=t.normalSold+t.consignmentSold;
+    const venta=unidades*PX;
+    let estado='pagada',estadoLabel='Pagada',estadoBadge='bok';
+    if(unidades<=0){estado='sin_venta';estadoLabel='Sin venta';estadoBadge='bblue'}
+    else if(t.paidDetails>0&&t.unpaidDetails>0){estado='parcial';estadoLabel='Parcial';estadoBadge='bwarn'}
+    else if(t.unpaidDetails>0){estado='no_pagada';estadoLabel='No pagada';estadoBadge='berr'}
+    return {tid,t,unidades,venta,estado,estadoLabel,estadoBadge};
+  }).sort((a,b)=>b.unidades-a.unidades);
   g('ct-t').textContent=filas.length+' tiendas';
-  if(!filas.length){g('e-tiendas').style.display='block';return}
-  filas.forEach(([tid,t])=>{
-    const vend=t.normalSold+t.consignmentSold;
-    const vendPesos=vend*PX;
-    const dif=+(t.cob-vendPesos).toFixed(2);
+  const resumen=filas.reduce((total,fila)=>({
+    unidades:total.unidades+fila.unidades,
+    venta:total.venta+fila.venta,
+    cobrado:total.cobrado+fila.t.cob,
+    pendiente:total.pendiente+fila.t.pending,
+    noPagadas:total.noPagadas+(fila.estado==='no_pagada'?1:0)
+  }),{unidades:0,venta:0,cobrado:0,pendiente:0,noPagadas:0});
+  g('st-visitadas').textContent=filas.length;
+  g('st-unidades').textContent=resumen.unidades;
+  g('st-venta').textContent=fp(resumen.venta);
+  g('st-cobrado').textContent=fp(resumen.cobrado);
+  g('st-pendiente').textContent=fp(resumen.pendiente);
+  g('st-no-pagadas').textContent=resumen.noPagadas;
+  if(!filas.length){g('t-tiendas').style.display='none';g('e-tiendas').textContent='Sin datos';g('e-tiendas').style.display='block';g('f-tiendas').innerHTML='';return}
+  g('e-tiendas').style.display='none';
+  filas.forEach(({tid,t,unidades,venta,estado,estadoLabel,estadoBadge})=>{
+    const dif=+(t.cob-venta).toFixed(2);
     const info=dT[tid]||{nombre:tid,municipio:'',colonia:''};
-    let est,pill;
-    if(!t.pag){est='alerta';pill=`<span class="badge bwarn"><span class="bdot"></span>No pagada</span>`}
-    else if(Math.abs(dif)<0.01){est='bien';pill=`<span class="badge bok"><span class="bdot"></span>OK</span>`}
-    else if(Math.abs(dif)<=2){est='alerta';pill=`<span class="badge bwarn"><span class="bdot"></span>Dif ${dif>0?'+':''}${fp(dif)}</span>`}
-    else{est='mal';pill=`<span class="badge berr"><span class="bdot"></span>Dif ${dif>0?'+':''}${fp(dif)}</span>`}
     const cnt={};t.prods.forEach(p=>{cnt[p]=(cnt[p]||0)+1});
-    const tags=Object.entries(cnt).map(([k])=>`<span class="gtag g${k}">${PSHORT[k]||k}</span>`).join('');
-    const pagB=t.pag?`<span class="badge bok">Sí</span>`:`<span class="badge bwarn">No</span>`;
-    const tr=document.createElement('tr');tr.className='trc store-row-detail';tr.dataset.est=est;
+    const tr=document.createElement('tr');tr.className='trc store-row-detail';
+    tr.dataset.estado=estado;
+    tr.dataset.devolucion=t.dev>0?'1':'0';
+    tr.dataset.consigna=t.hasConsignment?'1':'0';
+    tr.dataset.buscar=`${tid} ${info.nombre||''} ${info.colonia||''} ${info.municipio||''}`.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    tr.dataset.unidades=unidades;
+    tr.dataset.venta=venta;
+    tr.dataset.cobrado=t.cob;
+    tr.dataset.pendiente=t.pending;
     tr.title='Doble clic para abrir el reporte detalle de esta tienda';
-    tr.onclick=()=>abrirDet(tr,tid,info.nombre,t,vend,dif,cnt);
+    tr.onclick=()=>abrirDet(tr,tid,info.nombre,t,unidades,dif,cnt);
     tr.ondblclick=event=>{event.preventDefault();abrirReporteDetalleTienda(tid)};
     const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:`<span style="color:var(--text3)">—</span>`;
-    tr.innerHTML=`<td><div class="tn">${info.nombre}</div><div class="tm">${info.colonia||info.municipio}</div></td><td>${tags||'—'}</td><td class="r">${horaStr}</td><td class="r">${t.normalSold}</td><td class="r" style="color:var(--purple)">${t.consignmentSold}</td><td class="r" style="color:var(--red)">${t.dev}</td><td class="r" style="color:var(--green)">${fp(vendPesos)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td class="r">${pagB}</td><td>${pill}</td>`;
+    tr.innerHTML=`<td><div class="tn">${esc(info.nombre)}</div><div class="tm">${esc(info.colonia||info.municipio||'—')}</div></td><td class="r">${horaStr}</td><td class="r">${unidades}</td><td class="r" style="color:var(--green)">${fp(venta)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td><span class="badge ${estadoBadge}"><span class="bdot"></span>${estadoLabel}</span></td><td><button class="store-action-btn" type="button">Ver detalle</button></td>`;
+    tr.querySelector('.store-action-btn').onclick=event=>{event.stopPropagation();abrirDet(tr,tid,info.nombre,t,unidades,dif,cnt)};
     tbody.appendChild(tr);
   });
   g('t-tiendas').style.display='table';
+  aplicarFiltrosTiendas();
 }
 
 function abrirDet(row,tid,nombre,t,vend,dif,cnt){
@@ -1450,8 +1527,35 @@ function cerrarReporteDetalleTienda(){
 }
 
 function filtT(est,btn){
-  if(btn){document.querySelectorAll('.chip').forEach(c=>c.classList.remove('act'));btn.classList.add('act')}
-  document.querySelectorAll('#b-tiendas tr').forEach(tr=>{tr.style.display=(est==='todas'||tr.dataset.est===est)?'':'none'});
+  if(btn){document.querySelectorAll('.store-filter').forEach(c=>c.classList.remove('act'));btn.classList.add('act')}
+  aplicarFiltrosTiendas();
+}
+
+function aplicarFiltrosTiendas(){
+  const query=String(g('f-tienda-buscar')?.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const filtro=document.querySelector('.store-filter.act')?.dataset.filter||'todas';
+  const totales={tiendas:0,unidades:0,venta:0,cobrado:0,pendiente:0};
+  document.querySelectorAll('#b-tiendas tr').forEach(tr=>{
+    const coincideTexto=!query||tr.dataset.buscar.includes(query);
+    const coincideFiltro=
+      filtro==='todas'||
+      filtro===tr.dataset.estado||
+      (filtro==='devolucion'&&tr.dataset.devolucion==='1')||
+      (filtro==='consigna'&&tr.dataset.consigna==='1');
+    const visible=coincideTexto&&coincideFiltro;
+    tr.style.display=visible?'':'none';
+    if(!visible)return;
+    totales.tiendas+=1;
+    totales.unidades+=money(tr.dataset.unidades);
+    totales.venta+=money(tr.dataset.venta);
+    totales.cobrado+=money(tr.dataset.cobrado);
+    totales.pendiente+=money(tr.dataset.pendiente);
+  });
+  g('ct-t').textContent=`${totales.tiendas} tienda${totales.tiendas===1?'':'s'} visibles`;
+  g('f-tiendas').innerHTML=`<tr><td>TOTAL · ${totales.tiendas} tienda${totales.tiendas===1?'':'s'}</td><td></td><td class="r">${totales.unidades}</td><td class="r">${fp(totales.venta)}</td><td class="r">${fp(totales.cobrado)}</td><td><span class="store-pending-total">Pendiente ${fp(totales.pendiente)}</span></td><td></td></tr>`;
+  const empty=g('e-tiendas');
+  empty.textContent='No hay tiendas para la búsqueda o filtro seleccionado';
+  empty.style.display=totales.tiendas?'none':'block';
   g('det-t').style.display='none';
 }
 
