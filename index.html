@@ -123,6 +123,12 @@ tr:last-child td{border-bottom:none}
 .store-summary-item strong{display:block;font-family:var(--mono);font-size:18px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .store-summary-item.primary strong{color:var(--green)}
 .store-summary-item.warning strong{color:var(--amber)}
+.store-alerts{display:flex;gap:8px;flex-wrap:wrap;margin:-3px 0 14px}
+.store-alert{display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--bg2);font-family:var(--mono);font-size:10px;color:var(--text2)}
+.store-alert strong{color:var(--text);font-size:11px}.store-alert.pending{border-color:rgba(255,74,110,.24)}.store-alert.pending strong{color:var(--red)}
+.store-alert.returns{border-color:rgba(255,170,0,.2)}.store-alert.returns strong{color:var(--amber)}
+.store-alert.consignment{border-color:rgba(167,139,250,.2)}.store-alert.consignment strong{color:var(--purple)}
+.store-alert.clear{color:var(--text3)}.store-alert.clear strong{color:var(--green)}
 .store-table-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border);background:var(--bg2)}
 .store-search{flex:1;max-width:320px}
 .store-search input{width:100%;height:34px;padding:0 11px;background:var(--s);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--display);font-size:13px;outline:none}
@@ -188,7 +194,7 @@ body.modal-open{overflow:hidden}
 @keyframes store-detail-in{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:1100px){.store-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:900px){.g2{grid-template-columns:1fr}.mets{grid-template-columns:repeat(2,1fr)}.pmets{grid-template-columns:repeat(2,1fr)}.financial-state{align-items:flex-start;flex-direction:column;gap:4px}.financial-state-detail{text-align:left}.store-detail-meta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.store-table-tools{align-items:stretch;flex-direction:column}.store-search{max-width:none}.store-quick-filters{justify-content:flex-start}.store-inline-head{display:block}.store-inline-context{justify-content:flex-start;margin-top:9px}.store-inline-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:560px){.store-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.store-summary-item{padding:10px 11px}.store-summary-item strong{font-size:15px}.store-detail-overlay{align-items:flex-end;padding:0}.store-detail-modal{max-height:92vh;border-radius:14px 14px 0 0}.store-detail-head{padding:15px 16px}.store-detail-head h2{font-size:16px}.store-detail-body{max-height:calc(92vh - 68px);padding:12px 12px 16px}.store-detail-store{display:block;padding:11px 12px}.store-detail-id{margin-top:5px}.store-detail-meta-item{padding:9px 11px}.store-detail-table{min-width:340px}.store-inline-detail{padding:12px}.store-inline-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.store-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.store-summary-item{padding:10px 11px}.store-summary-item strong{font-size:15px}.store-alert{width:100%;justify-content:space-between}.store-detail-overlay{align-items:flex-end;padding:0}.store-detail-modal{max-height:92vh;border-radius:14px 14px 0 0}.store-detail-head{padding:15px 16px}.store-detail-head h2{font-size:16px}.store-detail-body{max-height:calc(92vh - 68px);padding:12px 12px 16px}.store-detail-store{display:block;padding:11px 12px}.store-detail-id{margin-top:5px}.store-detail-meta-item{padding:9px 11px}.store-detail-table{min-width:340px}.store-inline-detail{padding:12px}.store-inline-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -318,8 +324,9 @@ body.modal-open{overflow:hidden}
       <div class="store-summary-item primary"><span>Venta total</span><strong id="st-venta">—</strong></div>
       <div class="store-summary-item"><span>Cobrado total</span><strong id="st-cobrado">—</strong></div>
       <div class="store-summary-item warning"><span>Pendiente por cobrar</span><strong id="st-pendiente">—</strong></div>
-      <div class="store-summary-item warning"><span>Tiendas no pagadas</span><strong id="st-no-pagadas">—</strong></div>
+      <div class="store-summary-item warning"><span>Tiendas con saldo</span><strong id="st-no-pagadas">—</strong></div>
     </div>
+    <div class="store-alerts" id="store-alerts" aria-live="polite"></div>
     <div class="card">
       <div class="ch"><div class="ct">Detalle por tienda</div><div class="cs">clic para desglose · doble clic para reporte detalle · <span id="ct-t"></span></div></div>
       <div id="t-load" class="load"><div class="spin"></div>Cargando...</div>
@@ -328,6 +335,7 @@ body.modal-open{overflow:hidden}
         <div class="store-quick-filters" aria-label="Filtros rápidos por tienda">
           <button class="store-filter act" type="button" data-filter="todas" onclick="filtT('todas',this)">Todas</button>
           <button class="store-filter" type="button" data-filter="pagada" onclick="filtT('pagada',this)">Pagadas</button>
+          <button class="store-filter" type="button" data-filter="parcial" onclick="filtT('parcial',this)">Parciales</button>
           <button class="store-filter" type="button" data-filter="no_pagada" onclick="filtT('no_pagada',this)">No pagadas</button>
           <button class="store-filter" type="button" data-filter="devolucion" onclick="filtT('devolucion',this)">Con devolución</button>
           <button class="store-filter" type="button" data-filter="consigna" onclick="filtT('consigna',this)">Con consigna</button>
@@ -1145,17 +1153,23 @@ function renderVentasPorRepartidor(){
   body.innerHTML='';res.innerHTML='';
   if(!grupos.length){empty.style.display='block';res.innerHTML='<div class="empty">Sin datos por repartidor</div>';return}
   empty.style.display='none';
-  const resumenRows=grupos.map(gr=>`<tr><td><div class="tn">${esc(driverName(gr.repartidorId))}</div><div class="tm">${esc(gr.ruta)} · ${esc(fd(gr.fecha))}</div></td><td class="r" style="color:var(--green)">${fp(gr.totalVendido)}</td><td class="r" style="color:var(--red)">${fp(gr.pendiente)}</td><td class="r" style="color:var(--amber)">${gr.devoluciones}</td><td>${esc(gr.estadoCorte.label)}</td></tr>`).join('');
+  const resumenRows=grupos.map(gr=>{
+    const cobrado=gr.efectivo+gr.transferencia;
+    const cobertura=gr.totalVendido>0?Math.min(100,Math.round((cobrado/gr.totalVendido)*100)):0;
+    return `<tr><td><div class="tn">${esc(driverName(gr.repartidorId))}</div><div class="tm">${esc(gr.ruta)} · ${esc(fd(gr.fecha))}</div></td><td class="r" style="color:var(--green)">${fp(gr.totalVendido)}</td><td class="r" style="color:var(--blue)">${fp(cobrado)}</td><td class="r" style="color:${cobertura>=95?'var(--green)':cobertura>=70?'var(--amber)':'var(--red)'}">${cobertura}%</td><td class="r" style="color:var(--red)">${fp(gr.pendiente)}</td><td class="r" style="color:var(--amber)">${gr.devoluciones}</td><td>${esc(gr.estadoCorte.label)}</td></tr>`;
+  }).join('');
   const resumenProd={};
   grupos.forEach(gr=>Object.values(gr.productos).forEach(p=>{if(!resumenProd[p.productoId])resumenProd[p.productoId]={vendido:0,importe:0};resumenProd[p.productoId].vendido+=p.vendido;resumenProd[p.productoId].importe+=p.importe}));
   const productoRows=Object.entries(resumenProd).map(([pid,p])=>`<tr><td>${esc(productName(pid))}</td><td class="r">${p.vendido}</td><td class="r" style="color:var(--green)">${fp(p.importe)}</td></tr>`).join('');
-  res.innerHTML=`<table><thead><tr><th>Repartidor / Ruta</th><th class="r">Total vendido</th><th class="r">Pendiente</th><th class="r">Devoluciones</th><th>Corte</th></tr></thead><tbody>${resumenRows}</tbody></table>${productoRows?`<div class="ch" style="margin-top:12px"><div class="ct">Totales por producto</div></div><table><thead><tr><th>Producto</th><th class="r">Cantidad vendida</th><th class="r">Importe vendido</th></tr></thead><tbody>${productoRows}</tbody></table>`:''}`;
+  res.innerHTML=`<div class="store-table-scroll"><table style="min-width:760px"><thead><tr><th>Repartidor / Ruta</th><th class="r">Total vendido</th><th class="r">Cobrado</th><th class="r">Cobertura</th><th class="r">Pendiente</th><th class="r">Devoluciones</th><th>Corte</th></tr></thead><tbody>${resumenRows}</tbody></table></div>${productoRows?`<div class="ch" style="margin-top:12px"><div class="ct">Totales por producto</div></div><table><thead><tr><th>Producto</th><th class="r">Cantidad vendida</th><th class="r">Importe vendido</th></tr></thead><tbody>${productoRows}</tbody></table>`:''}`;
   grupos.forEach(gr=>{
     const productos=Object.values(gr.productos);
+    const cobrado=gr.efectivo+gr.transferencia;
+    const cobertura=gr.totalVendido>0?Math.min(100,Math.round((cobrado/gr.totalVendido)*100)):0;
     const detalle=productos.length?`<table><thead><tr><th>Producto</th><th class="r">Entregado</th><th class="r">Cantidad vendida</th><th class="r">Merma / devolución</th><th class="r">Importe vendido</th></tr></thead><tbody>${productos.map(p=>`<tr><td>${esc(productName(p.productoId))}</td><td class="r">${p.entregado}</td><td class="r">${p.vendido}</td><td class="r" style="color:var(--amber)">${p.devolucion}</td><td class="r" style="color:var(--green)">${fp(p.importe)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">Sin ventas registradas</div>';
     const estadoClass=gr.estadoCorte.filter==='no-cuadra'?'berr':gr.estadoCorte.filter==='abierto'?'bwarn':'bok';
     const card=document.createElement('div');card.className='card';
-    card.innerHTML=`<div class="rep-head"><div><div class="rep-title">${esc(driverName(gr.repartidorId))}</div><div class="rep-meta">${esc(gr.repartidorId)} · ${esc(gr.ruta)} · ${esc(fd(gr.fecha))} · <span class="badge ${estadoClass}">${esc(gr.estadoCorte.label)}</span></div></div><div class="rep-mets"><div class="rep-met"><label>Total vendido</label><strong style="color:var(--green)">${fp(gr.totalVendido)}</strong></div><div class="rep-met"><label>Efectivo</label><strong>${fp(gr.efectivo)}</strong></div><div class="rep-met"><label>Transferencia</label><strong>${fp(gr.transferencia)}</strong></div><div class="rep-met"><label>Pendiente</label><strong style="color:var(--red)">${fp(gr.pendiente)}</strong></div><div class="rep-met"><label>Diferencia corte</label><strong style="color:${Math.abs(gr.diferencia)>0?'var(--red)':'var(--green)'}">${fp(gr.diferencia)}</strong></div></div></div>${detalle}`;
+    card.innerHTML=`<div class="rep-head"><div><div class="rep-title">${esc(driverName(gr.repartidorId))}</div><div class="rep-meta">${esc(gr.repartidorId)} · ${esc(gr.ruta)} · ${esc(fd(gr.fecha))} · <span class="badge ${estadoClass}">${esc(gr.estadoCorte.label)}</span></div></div><div class="rep-mets"><div class="rep-met"><label>Total vendido</label><strong style="color:var(--green)">${fp(gr.totalVendido)}</strong></div><div class="rep-met"><label>Cobrado</label><strong style="color:var(--blue)">${fp(cobrado)}</strong></div><div class="rep-met"><label>Cobertura</label><strong style="color:${cobertura>=95?'var(--green)':cobertura>=70?'var(--amber)':'var(--red)'}">${cobertura}%</strong></div><div class="rep-met"><label>Efectivo</label><strong>${fp(gr.efectivo)}</strong></div><div class="rep-met"><label>Transferencia</label><strong>${fp(gr.transferencia)}</strong></div><div class="rep-met"><label>Pendiente</label><strong style="color:var(--red)">${fp(gr.pendiente)}</strong></div><div class="rep-met"><label>Diferencia corte</label><strong style="color:${Math.abs(gr.diferencia)>0?'var(--red)':'var(--green)'}">${fp(gr.diferencia)}</strong></div></div></div>${detalle}`;
     body.appendChild(card);
   });
 }
@@ -1233,17 +1247,15 @@ function renderizar(){
   let tEnt=0,tVend=0,tFin=0,tDev=0,tCob=0,tPend=0;
   det.forEach(d=>{
     const ent=entregadoDetalle(d),vend=vendidoDetalle(d),dev=money(d.DEVOLUCION),fin=money(d.INV_FINAL);
-    tEnt+=ent;tVend+=vend;tFin+=fin;tDev+=dev;tCob+=+d.MONTO_COBRADO||0;
-    const pagado=d.PAGADO==='Sí'||d.PAGADO==='Si'||d.PAGADO==='1';
-    if(!pagado)tPend+=vend*PX;
+    const cobro=detalleCobranza(d);
+    tEnt+=ent;tVend+=vend;tFin+=fin;tDev+=dev;tCob+=cobro.cobrado;tPend+=cobro.pendiente;
   });
   const pV=tVend*PX,pF=tFin*PX,pct=tEnt>0?Math.round((tVend/tEnt)*100):0;
   // Pendiente por tienda (cuántas tiendas tienen al menos 1 detalle no pagado)
   const tiendasPend={};
   det.forEach(d=>{
     const tid=d.TIENDA_ID;if(!tid)return;
-    const pagado=d.PAGADO==='Sí'||d.PAGADO==='Si'||d.PAGADO==='1';
-    if(!pagado)tiendasPend[tid]=true;
+    if(detalleCobranza(d).pendiente>0.009)tiendasPend[tid]=true;
   });
   const nTiendasPend=Object.keys(tiendasPend).length;
   g('m-v').textContent=fp(pV);g('m-vs').textContent=`${tVend} paq × $${PX}`;
@@ -1372,10 +1384,13 @@ function renderTiendas(det){
     if(esDetalleConsigna(d)){por[tid].consignmentSold+=unidades;por[tid].hasConsignment=true}
     else por[tid].normalSold+=unidades;
     por[tid].dev+=money(d.DEVOLUCION);
-    por[tid].cob+=+d.MONTO_COBRADO||0;
+    const cobro=detalleCobranza(d);
+    por[tid].cob+=cobro.cobrado;
     if(unidades>0){
-      if(estaPagado(d))por[tid].paidDetails+=1;
-      else{por[tid].unpaidDetails+=1;por[tid].pending+=+d.MONTO_COBRADO||unidades*PX}
+      if(cobro.estado==='pagada')por[tid].paidDetails+=1;
+      else if(cobro.estado==='parcial')por[tid].paidDetails+=1,por[tid].unpaidDetails+=1;
+      else por[tid].unpaidDetails+=1;
+      por[tid].pending+=cobro.pendiente;
     }
     if(d.PRODUCTO_ID)por[tid].prods.push(d.PRODUCTO_ID);
   });
@@ -1384,8 +1399,9 @@ function renderTiendas(det){
     const venta=unidades*PX;
     let estado='pagada',estadoLabel='Pagada',estadoBadge='bok';
     if(unidades<=0){estado='sin_venta';estadoLabel='Sin venta';estadoBadge='bblue'}
-    else if(t.paidDetails>0&&t.unpaidDetails>0){estado='parcial';estadoLabel='Parcial';estadoBadge='bwarn'}
-    else if(t.unpaidDetails>0){estado='no_pagada';estadoLabel='No pagada';estadoBadge='berr'}
+    else if(t.pending<=0.009&&t.cob>0){estado='pagada';estadoLabel='Pagada';estadoBadge='bok'}
+    else if(t.cob>0){estado='parcial';estadoLabel='Parcial';estadoBadge='bwarn'}
+    else{estado='no_pagada';estadoLabel='No pagada';estadoBadge='berr'}
     return {tid,t,unidades,venta,estado,estadoLabel,estadoBadge};
   }).sort((a,b)=>b.unidades-a.unidades);
   g('ct-t').textContent=filas.length+' tiendas';
@@ -1394,7 +1410,7 @@ function renderTiendas(det){
     venta:total.venta+fila.venta,
     cobrado:total.cobrado+fila.t.cob,
     pendiente:total.pendiente+fila.t.pending,
-    noPagadas:total.noPagadas+(fila.estado==='no_pagada'?1:0)
+    noPagadas:total.noPagadas+(fila.t.pending>0.009?1:0)
   }),{unidades:0,venta:0,cobrado:0,pendiente:0,noPagadas:0});
   g('st-visitadas').textContent=filas.length;
   g('st-unidades').textContent=resumen.unidades;
@@ -1402,6 +1418,13 @@ function renderTiendas(det){
   g('st-cobrado').textContent=fp(resumen.cobrado);
   g('st-pendiente').textContent=fp(resumen.pendiente);
   g('st-no-pagadas').textContent=resumen.noPagadas;
+  const tiendasConDevolucion=filas.filter(fila=>fila.t.dev>0);
+  const tiendasConConsigna=filas.filter(fila=>fila.t.hasConsignment);
+  const alertas=[];
+  if(resumen.noPagadas)alertas.push(`<div class="store-alert pending"><span>Saldo pendiente</span><strong>${resumen.noPagadas} tienda${resumen.noPagadas===1?'':'s'} · ${fp(resumen.pendiente)}</strong></div>`);
+  if(tiendasConDevolucion.length)alertas.push(`<div class="store-alert returns"><span>Con devolución</span><strong>${tiendasConDevolucion.length} tienda${tiendasConDevolucion.length===1?'':'s'} · ${tiendasConDevolucion.reduce((sum,fila)=>sum+fila.t.dev,0)} pzas</strong></div>`);
+  if(tiendasConConsigna.length)alertas.push(`<div class="store-alert consignment"><span>Con consigna</span><strong>${tiendasConConsigna.length} tienda${tiendasConConsigna.length===1?'':'s'}</strong></div>`);
+  g('store-alerts').innerHTML=alertas.length?alertas.join(''):'<div class="store-alert clear"><span>Operación</span><strong>Sin alertas en los filtros actuales</strong></div>';
   if(!filas.length){g('t-tiendas').style.display='none';g('e-tiendas').textContent='Sin datos';g('e-tiendas').style.display='block';g('f-tiendas').innerHTML='';return}
   g('e-tiendas').style.display='none';
   filas.forEach(({tid,t,unidades,venta,estado,estadoLabel,estadoBadge})=>{
@@ -1421,7 +1444,8 @@ function renderTiendas(det){
     const horaStr=t.hora?`<span style="font-family:var(--mono);font-size:11px;color:var(--green)">${t.hora}</span>`:'';
     const datoSecundario=info.colonia||info.direccion||info.municipio||'';
     const datoSecundarioHtml=datoSecundario?`<div class="tm">${esc(datoSecundario)}</div>`:'';
-    tr.innerHTML=`<td><div class="tn">${esc(info.nombre)}</div>${datoSecundarioHtml}</td><td class="r">${horaStr}</td><td class="r">${unidades}</td><td class="r" style="color:var(--green)">${fp(venta)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}</td><td><span class="badge ${estadoBadge}"><span class="bdot"></span>${estadoLabel}</span></td><td><button class="store-action-btn" type="button">Ver detalle</button></td>`;
+    const pendienteHtml=t.pending>0.009?`<div class="tm" style="color:var(--amber)">Pend. ${fp(t.pending)}</div>`:'';
+    tr.innerHTML=`<td><div class="tn">${esc(info.nombre)}</div>${datoSecundarioHtml}</td><td class="r">${horaStr}</td><td class="r">${unidades}</td><td class="r" style="color:var(--green)">${fp(venta)}</td><td class="r" style="color:var(--blue)">${fp(t.cob)}${pendienteHtml}</td><td><span class="badge ${estadoBadge}"><span class="bdot"></span>${estadoLabel}</span></td><td><button class="store-action-btn" type="button">Ver detalle</button></td>`;
     tr.querySelector('.store-action-btn').onclick=event=>{event.stopPropagation();abrirDet(tr,tid,info.nombre,t,unidades,estadoLabel)};
     tbody.appendChild(tr);
   });
@@ -1473,7 +1497,7 @@ function abrirDet(row,tid,nombre,t,vend,estadoLabel){
       <div class="store-inline-metric"><span>Devuelto</span><strong>${t.dev} pzas · ${fp(t.dev*PX)}</strong></div>
       <div class="store-inline-metric sold"><span>Vendido $</span><strong>${fp(vend*PX)}</strong></div>
       <div class="store-inline-metric collected"><span>Cobrado $</span><strong>${fp(t.cob)}</strong></div>
-      <div class="store-inline-metric"><span>Estado</span><strong>${esc(estadoLabel)}</strong></div>
+      <div class="store-inline-metric"><span>Estado</span><strong>${esc(estadoLabel)}${t.pending>0.009?` · Saldo ${fp(t.pending)}`:''}</strong></div>
     </div>
   </div></td>`;
   row.classList.add('sel');
@@ -1814,6 +1838,17 @@ function estaPagado(d){
   const forma=formaPagoTipo(d.FORMA_PAGO);
   if(forma==='pendiente')return false;
   return d.PAGADO==='Sí'||d.PAGADO==='Si'||d.PAGADO==='1'||d.PAGADO===true;
+}
+
+function detalleCobranza(d){
+  const venta=vendidoDetalle(d)*PX;
+  const cobrado=Math.max(0,money(d.MONTO_COBRADO));
+  const pendiente=Math.max(0,venta-cobrado);
+  let estado='no_pagada';
+  if(venta<=0)estado='sin_venta';
+  else if(estaPagado(d)&&pendiente<=0.009)estado='pagada';
+  else if(cobrado>0)estado='parcial';
+  return {venta,cobrado,pendiente,estado};
 }
 
 function esNoAbrio(v){
