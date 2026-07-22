@@ -720,7 +720,7 @@ function normalizeVisits(rows){
       REPARTIDOR_ID: val(o,'repartidorId','driverId','repartidor','driverName','REPARTIDOR_ID','REPARTIDOR'),
       HORA_LLEGADA: visitTime.hora,
       HORA_FUENTE: visitTime.source,
-      ESTADO: val(o,'status','estado','ESTADO'),
+      ESTADO: val(o,'state','status','estado','ESTADO'),
       FORMA_PAGO: val(o,'paymentMethod','formaPago','FORMA_PAGO'),
       PENDING_REASON: val(o,'pendingReason','motivoPendiente','PENDING_REASON'),
       PENDING_NOTE: val(o,'pendingNote','observacionPendiente','PENDING_NOTE'),
@@ -734,26 +734,31 @@ function normalizeVisits(rows){
   }).filter(o=>o.VISITA_ID||o.TIENDA_ID);
 }
 
-function normalizeDetails(rows){
+function normalizeDetails(rows,visits=[]){
+  const visitsById={};
+  visits.forEach(v=>{if(v.VISITA_ID)visitsById[v.VISITA_ID]=v});
   return rows.map(o=>{
+    const visitId=val(o,'visitId','VISITA_ID');
+    const visit=visitsById[visitId]||{};
     const ent=num(o,'entregado','deliveredQuantity','quantityDelivered','ENTREGADO');
     const dev=num(o,'devolucion','returnQuantity','returnedQuantity','DEVOLUCION');
-    const monto=num(o,'montoCobrado','amountCollected','MONTO_COBRADO');
-    const forma=val(o,'paymentMethod','formaPago','FORMA_PAGO');
+    const monto=num(o,'mtoCobrado','montoCobrado','amountCollected','MONTO_COBRADO');
+    const forma=val(o,'paymentMethod','formaPago','FORMA_PAGO')||visit.FORMA_PAGO||'';
     const pagado=val(o,'pagado','paid','PAGADO');
     const consignaObjetivo=num(o,'consignaObjetivo','CONSIGNA_OBJETIVO');
     const consignaStatus=val(o,'consignaStatus','CONSIGNA_STATUS');
     const vendidoCalculado=num(o,'vendidoCalculado','VENDIDO_CALCULADO');
     const esConsigna=!!consignaStatus||consignaObjetivo>0;
     const vendido=esConsigna?vendidoCalculado:Math.max(0,ent-dev);
-    const formaPendiente=String(forma||'').toUpperCase()==='PENDIENTE';
-    const esPagado=!formaPendiente&&(boolSi(pagado)||!!forma);
+    const tipoPago=formaPagoTipo(forma);
+    const esPagado=tipoPago!=='pendiente'&&(boolSi(pagado)||tipoPago==='efectivo'||tipoPago==='transferencia');
     return {
       DETALLE_ID: val(o,'detailId','DETALLE_ID','id'),
-      VISITA_ID: val(o,'visitId','VISITA_ID'),
-      FECHA: normFecha(val(o,'date','fecha','FECHA')),
-      RUTA_ID: val(o,'routeId','rutaId','RUTA_ID'),
-      TIENDA_ID: val(o,'storeId','tiendaId','TIENDA_ID'),
+      VISITA_ID: visitId,
+      FECHA: normFecha(val(o,'date','fecha','FECHA'))||visit.FECHA||'',
+      RUTA_ID: val(o,'routeId','rutaId','RUTA_ID')||visit.RUTA_ID||'',
+      TIENDA_ID: val(o,'storeId','tiendaId','TIENDA_ID')||visit.TIENDA_ID||'',
+      REPARTIDOR_ID: val(o,'repartidorId','driverId','REPARTIDOR_ID')||visit.REPARTIDOR_ID||'',
       PRODUCTO_ID: normalizeProductId(val(o,'productId','productoId','PRODUCTO_ID')),
       OBSERVACION: val(o,'observation','observacion','note','OBSERVACION'),
       INV_INICIAL: num(o,'invInicial','initialQuantity','INV_INICIAL'),
@@ -875,7 +880,7 @@ function normalizeCuts(rows){
     DIFERENCIA_EFECTIVO: num(o,'diferencia','diferenciaEfectivo','DIFERENCIA_EFECTIVO'),
     ESTADO_CUADRE: val(o,'estado','estadoCorte','estadoCuadre','ESTADO_CUADRE'),
     ESTADO_CORTE: val(o,'estadoCorte','ESTADO_CORTE'),
-    CERRADO: boolSi(val(o,'closed','cerrado','CERRADO')),
+    CERRADO: boolSi(val(o,'isClosed','closed','cerrado','CERRADO')),
     HORA_CIERRE: formatHora(val(o,'closedAt','horaCierre','HORA_CIERRE')||val(o,'updatedAt')),
     MOTIVO_DIFERENCIA: val(o,'shortageReasonNote','cashDifferenceNote','MOTIVO_DIFERENCIA')
   })).filter(o=>o.CORTE_ID||o.FECHA||o.RUTA_ID);
@@ -943,7 +948,7 @@ function normalizeRoutesFromData(){
 function aplicarDatosRemotos(datos,{tiempoReal=false}={}){
   dC=normalizeInventory(datos.routeInventories||[]);
   dV=normalizeVisits(datos.visits||[]);
-  dD=normalizeDetails(datos.visitDetails||[]);
+  dD=normalizeDetails(datos.visitDetails||[],dV);
   dCC=normalizeCuts(datos.cashCuts||[]);
   normalizeStores(datos.stores||[]);
   normalizeProducts(datos.products||[]);
@@ -1842,11 +1847,14 @@ function estaPagado(d){
 
 function detalleCobranza(d){
   const venta=vendidoDetalle(d)*PX;
-  const cobrado=Math.max(0,money(d.MONTO_COBRADO));
+  const forma=formaPagoTipo(d.FORMA_PAGO);
+  const importeRegistrado=Math.max(0,money(d.MONTO_COBRADO));
+  if(venta<=0)return {venta,cobrado:0,pendiente:0,estado:'sin_venta'};
+  if(forma==='pendiente')return {venta,cobrado:0,pendiente:venta,estado:'no_pagada'};
+  const cobrado=(forma==='efectivo'||forma==='transferencia'||estaPagado(d))?Math.min(venta,importeRegistrado||venta):0;
   const pendiente=Math.max(0,venta-cobrado);
   let estado='no_pagada';
-  if(venta<=0)estado='sin_venta';
-  else if(estaPagado(d)&&pendiente<=0.009)estado='pagada';
+  if(pendiente<=0.009&&cobrado>0)estado='pagada';
   else if(cobrado>0)estado='parcial';
   return {venta,cobrado,pendiente,estado};
 }
