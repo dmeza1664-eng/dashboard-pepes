@@ -11,8 +11,11 @@ if (!scriptMatch) throw new Error("No se encontro el script principal del dashbo
 const initMarker = "document.addEventListener('keydown'";
 const script = scriptMatch[1].slice(0, scriptMatch[1].indexOf(initMarker));
 const fields = {
+  "f-date-mode": {value: "day"},
   "f-fecha-inicio": {value: ""},
   "f-fecha-fin": {value: ""},
+  "f-fecha-inicio-label": {textContent: ""},
+  "f-fecha-fin-label": {textContent: ""},
   "f-ruta": {value: ""},
   "f-repartidor": {value: ""},
   "f-corte": {value: ""}
@@ -35,6 +38,17 @@ vm.runInContext(`
     {productId:'GA002',name:'Ate',price:18}
   ]);
 `, context);
+
+fields["f-fecha-inicio"].value = "2026-07-02";
+fields["f-fecha-fin"].value = "2026-07-21";
+fields["f-date-mode"].value = "day";
+assert.deepStrictEqual(evaluate("rangoFechasSeleccionado()"), {inicio: "2026-07-02", fin: "2026-07-02"});
+assert.strictEqual(evaluate("etiquetaRango('2026-07-02','2026-07-02')"), "Día · 02/07/2026");
+
+fields["f-date-mode"].value = "range";
+assert.deepStrictEqual(evaluate("rangoFechasSeleccionado()"), {inicio: "2026-07-02", fin: "2026-07-21"});
+assert.strictEqual(evaluate("diasIncluidos('2026-07-02','2026-07-21')"), 20);
+assert.strictEqual(evaluate("etiquetaRango('2026-07-02','2026-07-21')"), "Acumulado · 02/07/2026 al 21/07/2026 · 20 días");
 
 const dynamicPricing = evaluate(`(() => {
   const visits=normalizeVisits([

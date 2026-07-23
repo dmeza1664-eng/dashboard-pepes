@@ -20,24 +20,27 @@ header{position:sticky;top:0;z-index:200;background:rgba(8,10,15,.85);backdrop-f
 .hdr-date{font-family:var(--mono);font-size:11px;color:var(--text2);background:var(--s);border:1px solid var(--border2);padding:6px 12px;border-radius:6px}
 .btn{background:var(--s);border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .2s;letter-spacing:.5px}
 .btn:hover{border-color:var(--green);color:var(--green);background:rgba(0,255,157,.05)}
-.filtros{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.filtros{min-height:55px;background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
 .fg{display:flex;align-items:center;gap:8px}
 .fl{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px}
 select,input[type=date]{background:var(--s);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-family:var(--mono);font-size:11px;cursor:pointer;outline:none;transition:border-color .2s}
 select:focus,input[type=date]:focus{border-color:var(--green)}
+input[type=date]{width:142px;min-width:142px;font-variant-numeric:tabular-nums}
+input[type=date]:disabled{cursor:not-allowed;opacity:.42;border-style:dashed}
+.date-mode{min-width:112px}
 .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 32px;background:var(--bg2)}
 .tab{padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text3);border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:var(--display);text-transform:uppercase;letter-spacing:.3px}
 .tab.act{color:var(--green);border-bottom-color:var(--green)}
 .tab:hover:not(.act){color:var(--text)}
 main{padding:24px 32px;max-width:1440px;margin:0 auto;position:relative;z-index:1}
 .panel{display:none}.panel.act{display:block}
-.mets{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px}
-.met{background:var(--s);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+.mets{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.met{min-height:116px;background:var(--s);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
 .met:hover{transform:translateY(-1px);border-color:var(--border2)}
 .met-glow{position:absolute;top:0;left:0;right:0;height:1px;opacity:.6}
 .met-lbl{font-family:var(--mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
-.met-val{font-size:22px;font-weight:800;line-height:1;margin-bottom:3px;font-family:var(--mono);letter-spacing:-.5px}
-.met-sub{font-family:var(--mono);font-size:12px;color:var(--text3)}
+.met-val{min-height:24px;white-space:nowrap;font-size:clamp(17px,1.55vw,22px);font-weight:800;line-height:1;margin-bottom:3px;font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.met-sub{min-height:30px;font-family:var(--mono);font-size:12px;line-height:1.3;color:var(--text3)}
 .cg .met-val{color:var(--green)}.cg .met-glow{background:var(--green)}
 .cb .met-val{color:var(--blue)}.cb .met-glow{background:var(--blue)}
 .ca .met-val{color:var(--amber)}.ca .met-glow{background:var(--amber)}
@@ -98,14 +101,18 @@ tr:last-child td{border-bottom:none}
 @keyframes rot{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:40px;color:var(--text3);font-family:var(--mono);font-size:11px;letter-spacing:.5px}
 .err{background:rgba(255,74,110,.06);border:1px solid rgba(255,74,110,.2);color:var(--red);padding:12px 16px;border-radius:8px;font-size:11px;margin-bottom:16px;display:none;font-family:var(--mono)}
-.financial-state{display:none;align-items:center;justify-content:space-between;gap:14px;padding:10px 14px;border-radius:9px;margin-bottom:16px;border:1px solid var(--border2);font-family:var(--mono)}
+.financial-state{min-height:43px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 14px;border-radius:9px;margin-bottom:10px;border:1px solid var(--border2);font-family:var(--mono)}
 .financial-state-title{font-size:12px;font-weight:700;white-space:nowrap}.financial-state-detail{font-size:11px;text-align:right}
 .financial-state.preliminary{background:rgba(255,170,0,.08);border-color:rgba(255,170,0,.22);color:var(--amber)}
 .financial-state.definitive{background:rgba(0,255,157,.07);border-color:rgba(0,255,157,.18);color:var(--green)}
 .financial-state.mixed{background:rgba(59,158,255,.07);border-color:rgba(59,158,255,.18);color:var(--blue)}
-.data-alerts{display:none;margin-bottom:16px;border:1px solid rgba(255,170,0,.22);border-radius:9px;overflow:hidden;background:rgba(255,170,0,.05)}
-.data-alerts-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(255,170,0,.16);font-family:var(--mono);font-size:11px;color:var(--amber)}
-.data-alerts-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:rgba(255,170,0,.12)}
+.data-alerts{display:block;min-height:39px;margin-bottom:16px;border:1px solid rgba(255,170,0,.22);border-radius:9px;overflow:hidden;background:rgba(255,170,0,.05)}
+.data-alerts.clear{border-color:rgba(0,255,157,.15);background:rgba(0,255,157,.04)}
+.data-alerts-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border:0;background:transparent;font-family:var(--mono);font-size:11px;color:var(--amber);cursor:pointer;text-align:left}
+.data-alerts.clear .data-alerts-head{color:var(--green);cursor:default}
+.data-alerts-list{display:none;grid-template-columns:repeat(2,minmax(0,1fr));max-height:190px;overflow:auto;gap:1px;border-top:1px solid rgba(255,170,0,.16);background:rgba(255,170,0,.12)}
+.data-alerts.open .data-alerts-list{display:grid}
+.data-alerts-arrow{display:inline-block;transition:transform .15s}.data-alerts.open .data-alerts-arrow{transform:rotate(180deg)}.data-alerts.clear .data-alerts-arrow{display:none}
 .data-alert{padding:10px 14px;background:var(--s);font-family:var(--mono);font-size:10px;color:var(--text2);line-height:1.45}
 .data-alert strong{display:block;margin-bottom:3px;color:var(--text);font-size:11px}.data-alert.critical strong{color:var(--red)}.data-alert.info strong{color:var(--blue)}
 .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;z-index:2}
@@ -241,8 +248,9 @@ body.modal-open{overflow:hidden}
 </header>
 
 <div class="filtros">
-  <div class="fg"><span class="fl">Desde</span><input type="date" id="f-fecha-inicio" onchange="actualizarRangoFechas('inicio')"></div>
-  <div class="fg"><span class="fl">Hasta</span><input type="date" id="f-fecha-fin" onchange="actualizarRangoFechas('fin')"></div>
+  <div class="fg"><span class="fl">Vista</span><select class="date-mode" id="f-date-mode" onchange="cambiarModoFecha()"><option value="day">Día específico</option><option value="range">Rango</option></select></div>
+  <div class="fg"><span class="fl" id="f-fecha-inicio-label">Fecha</span><input type="date" id="f-fecha-inicio" onchange="actualizarRangoFechas('inicio')"></div>
+  <div class="fg"><span class="fl" id="f-fecha-fin-label">Hasta</span><input type="date" id="f-fecha-fin" onchange="actualizarRangoFechas('fin')" disabled title="Activa la vista Rango para cambiar esta fecha"></div>
   <div class="fg"><span class="fl">Ruta</span><select id="f-ruta" onchange="renderizar()"><option value="">Todas las rutas</option></select></div>
   <div class="fg"><span class="fl">Repartidor</span><select id="f-repartidor" onchange="renderizar()"><option value="">Todos los repartidores</option></select></div>
   <div class="fg"><span class="fl">Estado corte</span><select id="f-corte" onchange="renderizar()"><option value="">Todos</option><option value="abierto">Abierto</option><option value="cerrado">Cerrado</option><option value="cuadra">Cuadra</option><option value="no-cuadra">No cuadra</option></select></div>
@@ -266,8 +274,8 @@ body.modal-open{overflow:hidden}
     <div class="financial-state-title" id="financial-state-title"></div>
     <div class="financial-state-detail" id="financial-state-detail"></div>
   </div>
-  <section class="data-alerts" id="data-alerts" aria-live="polite">
-    <div class="data-alerts-head"><strong>Validación de datos</strong><span id="data-alerts-count"></span></div>
+  <section class="data-alerts clear" id="data-alerts" aria-live="polite">
+    <button class="data-alerts-head" id="data-alerts-toggle" type="button" onclick="toggleDataAlerts()" aria-expanded="false"><strong>Validación de datos</strong><span><span id="data-alerts-count">Sin alertas</span> <span class="data-alerts-arrow" id="data-alerts-arrow">⌄</span></span></button>
     <div class="data-alerts-list" id="data-alerts-list"></div>
   </section>
 
@@ -466,7 +474,7 @@ const FIREBASE_CONFIG = {
   measurementId: "G-H9RNTLJH7D"
 };
 
-const DASHBOARD_VERSION='1.2.0-preview';
+const DASHBOARD_VERSION='1.2.1-preview';
 const DEFAULT_PRODUCT_PRICE=17.50;
 const MONEY_TOLERANCE=0.01;
 const PNOM={GC001:'Galletas Chocolate',GA002:'Galletas Ate',GN003:'Galletas Nuez',GAL004:'Galletas Alfajor',P001:'Galletas Chocolate',P002:'Galletas Ate',P003:'Galletas Nuez',P004:'Galletas Alfajor'};
@@ -550,16 +558,18 @@ function timestampMillis(value){
   const parsed=Date.parse(String(value));
   return Number.isNaN(parsed)?0:parsed;
 }
-const rangoFechasSeleccionado=()=>({
-  inicio:normFecha(g('f-fecha-inicio')?.value||''),
-  fin:normFecha(g('f-fecha-fin')?.value||'')
-});
+const rangoFechasSeleccionado=()=>{
+  const inicio=normFecha(g('f-fecha-inicio')?.value||'');
+  const rangeMode=g('f-date-mode')?.value==='range';
+  return {inicio,fin:rangeMode?normFecha(g('f-fecha-fin')?.value||''):inicio};
+};
 const fechaEnRango=(valor,inicio,fin)=>{
   const fecha=normFecha(valor);
   if(!fecha)return false;
   return (!inicio||fecha>=inicio)&&(!fin||fecha<=fin);
 };
-const etiquetaRango=(inicio,fin)=>inicio&&fin?(inicio===fin?fd(inicio):`${fd(inicio)} - ${fd(fin)}`):(inicio?`Desde ${fd(inicio)}`:fin?`Hasta ${fd(fin)}`:'Todos los días');
+const diasIncluidos=(inicio,fin)=>inicio&&fin?Math.max(1,Math.round((Date.parse(`${fin}T00:00:00Z`)-Date.parse(`${inicio}T00:00:00Z`))/86400000)+1):0;
+const etiquetaRango=(inicio,fin)=>inicio&&fin?(inicio===fin?`Día · ${fd(inicio)}`:`Acumulado · ${fd(inicio)} al ${fd(fin)} · ${diasIncluidos(inicio,fin)} días`):(inicio?`Desde ${fd(inicio)}`:fin?`Hasta ${fd(fin)}`:'Todos los días');
 const fechaLocalISO=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 const fechasDe=rows=>[...new Set((rows||[]).map(o=>normFecha(o.FECHA||o.date||o.fecha)).filter(Boolean))].sort();
 const fechasConDatos=()=>[...new Set([...fechasDe(dV),...fechasDe(dC),...fechasDe(dCC),...fechasDe(dD)])].sort();
@@ -585,12 +595,29 @@ function seleccionarFechaConDatos(fecha){
 }
 function actualizarRangoFechas(origen){
   const inicioInput=g('f-fecha-inicio'),finInput=g('f-fecha-fin');
+  const dayMode=g('f-date-mode')?.value!=='range';
+  if(dayMode){
+    const selected=normFecha(inicioInput?.value||finInput?.value||'');
+    inicioInput.value=selected;
+    finInput.value=selected;
+    renderizar();
+    return;
+  }
   const inicio=normFecha(inicioInput?.value||''),fin=normFecha(finInput?.value||'');
   if(inicio&&fin&&inicio>fin){
     if(origen==='inicio')finInput.value=inicio;
     else inicioInput.value=fin;
   }
   renderizar();
+}
+function cambiarModoFecha(shouldRender=true){
+  const rangeMode=g('f-date-mode')?.value==='range';
+  const inicioInput=g('f-fecha-inicio'),finInput=g('f-fecha-fin');
+  finInput.disabled=!rangeMode;
+  g('f-fecha-inicio-label').textContent=rangeMode?'Desde':'Fecha';
+  g('f-fecha-fin-label').textContent=rangeMode?'Hasta':'Mismo día';
+  if(!rangeMode&&inicioInput.value)finInput.value=inicioInput.value;
+  if(shouldRender)renderizar();
 }
 function logFechasFiltro(fechaVisual,inicio,fin){
   console.log('rango visual:',fechaVisual);
@@ -1203,7 +1230,14 @@ function ventasPorRepartidorData(){
 
 function renderEstadoFinanciero(grupos=ventasPorRepartidorData()){
   const el=g('financial-state'),title=g('financial-state-title'),detail=g('financial-state-detail');
-  if(!grupos.length){el.style.display='none';return}
+  if(!grupos.length){
+    const {inicio,fin}=rangoFechasSeleccionado();
+    el.className='financial-state preliminary';
+    title.textContent='Sin información financiera';
+    detail.textContent=`No hay ventas ni cortes para ${etiquetaRango(inicio,fin).toLowerCase()}.`;
+    el.style.display='flex';
+    return;
+  }
   const definitivos=grupos.filter(gr=>gr.estadoCorte.definitive).length;
   const preliminares=grupos.length-definitivos;
   el.className='financial-state';
@@ -1244,11 +1278,19 @@ function collectDataAlerts(grupos,details){
 }
 
 function renderDataAlerts(grupos,details){
-  const container=g('data-alerts'),list=g('data-alerts-list'),alerts=collectDataAlerts(grupos,details);
-  if(!alerts.length){container.style.display='none';list.innerHTML='';return}
-  g('data-alerts-count').textContent=`${alerts.length} aviso${alerts.length===1?'':'s'}`;
+  const container=g('data-alerts'),list=g('data-alerts-list'),toggle=g('data-alerts-toggle'),alerts=collectDataAlerts(grupos,details);
+  container.className='data-alerts';
+  toggle.setAttribute('aria-expanded','false');
+  if(!alerts.length){container.classList.add('clear');g('data-alerts-count').textContent='Sin alertas';list.innerHTML='';return}
+  g('data-alerts-count').textContent=`${alerts.length} aviso${alerts.length===1?'':'s'} · ver`;
   list.innerHTML=alerts.map(alert=>`<div class="data-alert ${alert.level}"><strong>${esc(alert.title)}</strong>${esc(alert.message)}</div>`).join('');
-  container.style.display='block';
+}
+
+function toggleDataAlerts(){
+  const container=g('data-alerts'),toggle=g('data-alerts-toggle');
+  if(container.classList.contains('clear'))return;
+  const open=container.classList.toggle('open');
+  toggle.setAttribute('aria-expanded',String(open));
 }
 
 function actualizarEstadoFuente(grupos,details){
@@ -2244,6 +2286,8 @@ document.addEventListener('keydown',event=>{
 
 g('f-fecha-inicio').value=hoy();
 g('f-fecha-fin').value=hoy();
+g('f-date-mode').value='day';
+cambiarModoFecha(false);
 configurarLogin();
 </script>
 </body>
