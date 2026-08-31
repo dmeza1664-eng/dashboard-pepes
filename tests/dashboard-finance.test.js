@@ -20,10 +20,12 @@ const fields = {
   "f-repartidor": {value: ""},
   "f-corte": {value: ""}
 };
+const alertMessages = [];
 const context = vm.createContext({
   console,
   setTimeout,
   clearTimeout,
+  alert: message => alertMessages.push(message),
   document: {getElementById: id => fields[id] || {value: ""}}
 });
 vm.runInContext(script, context);
@@ -130,4 +132,97 @@ assert.strictEqual(pendingPayment.efectivo, 0);
 assert.strictEqual(pendingPayment.pendiente, 18);
 assert.strictEqual(pendingPayment.reconciliado, true);
 
-console.log("Dashboard finance tests: OK");
+(async () => {
+  assert.match(html, /setPersistence\(firebase\.auth\.Auth\.Persistence\.SESSION\)/);
+  assert.match(html, /auth\.onIdTokenChanged/);
+  assert.match(html, /Content-Security-Policy/);
+  assert.match(html, /\.dashboard-shell\{display:none\}/);
+  assert.doesNotMatch(html, /onclick="seleccionarFechaConDatos\('\$\{sugerida\}'\)"/);
+  assert.doesNotMatch(html, /\$\{info\.nombre\}<\/div><div class="tm"/);
+  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Administrador')"), true);
+  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Supervisor')"), true);
+  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Contadora')"), true);
+  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Repartidor')"), false);
+
+  fields["f-date-mode"].value = "range";
+  fields["f-fecha-inicio"].value = "2026-07-02";
+  fields["f-fecha-fin"].value = "2026-07-21";
+  assert.deepStrictEqual(evaluate("rangoConsultaFirestore()"), {
+    inicio: "2026-06-25",
+    fin: "2026-07-21",
+    visibleInicio: "2026-07-02",
+    visibleFin: "2026-07-21"
+  });
+  fields["f-fecha-fin"].value = "2026-08-21";
+  assert.throws(() => vm.runInContext("rangoConsultaFirestore()", context), /rango máximo/i);
+  assert.deepStrictEqual(evaluate("dividirEnLotes(Array.from({length:65},(_,i)=>i),FIRESTORE_IN_LIMIT).map(x=>x.length)"), [30, 30, 5]);
+  assert.strictEqual(evaluate("esc('<img src=x onerror=alert(1)>')"), "&lt;img src=x onerror=alert(1)&gt;");
+
+  vm.runInContext(`
+    db={collection:()=>({doc:()=>({get:async()=>({
+      exists:true,
+      data:()=>({role:'Supervisor',isActive:true,authUid:'auth-1'})
+    })})})};
+  `, context);
+  const allowed = await vm.runInContext(`validateDashboardAccess({
+    uid:'auth-1',
+    getIdTokenResult:async()=>({claims:{userId:'user-1',role:'Supervisor'}})
+  })`, context);
+  assert.strictEqual(allowed.role, "Supervisor");
+
+  vm.runInContext(`
+    db={collection:()=>({doc:()=>({get:async()=>({
+      exists:true,
+      data:()=>({role:'Repartidor',isActive:true,authUid:'auth-1'})
+    })})})};
+  `, context);
+  await assert.rejects(
+    vm.runInContext(`validateDashboardAccess({
+      uid:'auth-1',
+      getIdTokenResult:async()=>({claims:{userId:'user-1',role:'Repartidor'}})
+    })`, context),
+    /no tiene acceso/i
+  );
+
+  vm.runInContext(`
+    db={collection:()=>({doc:()=>({get:async()=>({
+      exists:true,
+      data:()=>({role:'Contadora',isActive:false,authUid:'auth-1'})
+    })})})};
+  `, context);
+  await assert.rejects(
+    vm.runInContext(`validateDashboardAccess({
+      uid:'auth-1',
+      getIdTokenResult:async()=>({claims:{userId:'user-1',role:'Contadora'}})
+    })`, context),
+    /desactivada/i
+  );
+
+  const unsubscribed = evaluate(`(() => {
+    let count=0;
+    realtimeUnsubscribers=[()=>count++,()=>count++];
+    realtimeDetailUnsubscribers=[()=>count++];
+    detenerActualizacionTiempoReal();
+    return {count,live:realtimeUnsubscribers.length,details:realtimeDetailUnsubscribers.length};
+  })()`);
+  assert.deepStrictEqual(unsubscribed, {count: 3, live: 0, details: 0});
+
+  assert.deepStrictEqual(evaluate(`(() => {
+    realtimeErrors=new Set(['users']);
+    return coleccionesBloqueantes();
+  })()`), []);
+  assert.deepStrictEqual(evaluate(`(() => {
+    realtimeErrors=new Set(['users','visits']);
+    return coleccionesBloqueantes();
+  })()`), ["visits"]);
+  vm.runInContext("realtimeErrors=new Set();", context);
+
+  alertMessages.length = 0;
+  vm.runInContext("dataReady=false; exportarExcel();", context);
+  assert.match(alertMessages[0], /incompleta/i);
+
+  console.log("Dashboard finance and hardening tests: OK");
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

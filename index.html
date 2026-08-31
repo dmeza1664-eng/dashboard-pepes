@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com wss://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https://*.firebaseapp.com;">
 <title>Dashboard Reparto — Firebase</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -241,7 +243,7 @@ body.modal-open{overflow:hidden}
   <div class="hdr-r">
     <div class="hdr-date" id="hdr-upd" title="Actualización en tiempo real desde Firestore">● Conectando…</div>
     <div class="hdr-date" id="hdr-date">—</div>
-    <button class="btn" onclick="exportarExcel()">⬇ Exportar Excel</button>
+    <button class="btn" id="export-button" onclick="exportarExcel()" disabled>⬇ Exportar Excel</button>
     <button class="btn" onclick="cargarDatos()">↻ ACTUALIZAR</button>
     <button class="btn" onclick="cerrarSesion()">Cerrar sesión</button>
   </div>
@@ -477,6 +479,9 @@ const FIREBASE_CONFIG = {
 const DASHBOARD_VERSION='1.2.1-preview';
 const DEFAULT_PRODUCT_PRICE=17.50;
 const MONEY_TOLERANCE=0.01;
+const DASHBOARD_ALLOWED_ROLES=new Set(['Administrador','Supervisor','Contadora']);
+const MAX_QUERY_RANGE_DAYS=31;
+const FIRESTORE_IN_LIMIT=30;
 const PNOM={GC001:'Galletas Chocolate',GA002:'Galletas Ate',GN003:'Galletas Nuez',GAL004:'Galletas Alfajor',P001:'Galletas Chocolate',P002:'Galletas Ate',P003:'Galletas Nuez',P004:'Galletas Alfajor'};
 // Alias visuales: conservan los IDs históricos usados por visitas, cortes e inventarios.
 const DRIVER_NAME_OVERRIDES={repartidor1:'Rosa'};
@@ -571,6 +576,12 @@ const fechaEnRango=(valor,inicio,fin)=>{
 const diasIncluidos=(inicio,fin)=>inicio&&fin?Math.max(1,Math.round((Date.parse(`${fin}T00:00:00Z`)-Date.parse(`${inicio}T00:00:00Z`))/86400000)+1):0;
 const etiquetaRango=(inicio,fin)=>inicio&&fin?(inicio===fin?`Día · ${fd(inicio)}`:`Acumulado · ${fd(inicio)} al ${fd(fin)} · ${diasIncluidos(inicio,fin)} días`):(inicio?`Desde ${fd(inicio)}`:fin?`Hasta ${fd(fin)}`:'Todos los días');
 const fechaLocalISO=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const sumarDias=(fecha,dias)=>{
+  const date=new Date(`${fecha}T00:00:00`);
+  date.setDate(date.getDate()+dias);
+  return fechaLocalISO(date);
+};
+const dividirEnLotes=(items,size)=>Array.from({length:Math.ceil(items.length/size)},(_,i)=>items.slice(i*size,(i+1)*size));
 const fechasDe=rows=>[...new Set((rows||[]).map(o=>normFecha(o.FECHA||o.date||o.fecha)).filter(Boolean))].sort();
 const fechasConDatos=()=>[...new Set([...fechasDe(dV),...fechasDe(dC),...fechasDe(dCC),...fechasDe(dD)])].sort();
 const productName=pid=>{const p=normalizeProductId(pid);return (dP[p]&&dP[p].nombre)||PNOM[p]||p||''};
@@ -601,6 +612,7 @@ function actualizarRangoFechas(origen){
     inicioInput.value=selected;
     finInput.value=selected;
     renderizar();
+    programarReinicioTiempoReal();
     return;
   }
   const inicio=normFecha(inicioInput?.value||''),fin=normFecha(finInput?.value||'');
@@ -609,6 +621,7 @@ function actualizarRangoFechas(origen){
     else inicioInput.value=fin;
   }
   renderizar();
+  programarReinicioTiempoReal();
 }
 function cambiarModoFecha(shouldRender=true){
   const rangeMode=g('f-date-mode')?.value==='range';
@@ -617,7 +630,10 @@ function cambiarModoFecha(shouldRender=true){
   g('f-fecha-inicio-label').textContent=rangeMode?'Desde':'Fecha';
   g('f-fecha-fin-label').textContent=rangeMode?'Hasta':'Mismo día';
   if(!rangeMode&&inicioInput.value)finInput.value=inicioInput.value;
-  if(shouldRender)renderizar();
+  if(shouldRender){
+    renderizar();
+    programarReinicioTiempoReal();
+  }
 }
 function logFechasFiltro(fechaVisual,inicio,fin){
   console.log('rango visual:',fechaVisual);
@@ -634,28 +650,54 @@ function actualizarAyudaFecha(inicio,fin){
   const hayFecha=fechas.some(fecha=>fechaEnRango(fecha,inicio,fin));
   if(hayDocs&&(inicio||fin)&&!hayFecha){
     const sugerida=fechas[fechas.length-1]||'';
-    el.innerHTML=`Hay datos en Firebase, pero no para el rango seleccionado.${sugerida?` <button class="btn" style="padding:3px 8px;font-size:10px;margin-left:8px" onclick="seleccionarFechaConDatos('${sugerida}')">Usar ${fd(sugerida)}</button>`:''}`;
+    el.replaceChildren(document.createTextNode('Hay datos en Firebase, pero no para el rango seleccionado.'));
+    if(sugerida){
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='btn';
+      button.style.cssText='padding:3px 8px;font-size:10px;margin-left:8px';
+      button.textContent=`Usar ${fd(sugerida)}`;
+      button.addEventListener('click',()=>seleccionarFechaConDatos(sugerida));
+      el.appendChild(button);
+    }
     el.style.display='inline';
   }else{
     el.style.display='none';
-    el.innerHTML='';
+    el.replaceChildren();
   }
 }
 
 let db=null;
 let auth=null;
 let authReady=false;
+let authPersistenceReady=Promise.resolve();
+let dashboardProfile=null;
+let authValidationSequence=0;
 const FIRESTORE_LIVE_COLLECTIONS=[
   'routeInventories','visits','visitDetails','cashCuts',
   'stores','products','dailyStoreAssignments','users'
 ];
-// Catálogos auxiliares: el dashboard conserva nombres locales si las reglas no permiten leerlos.
-const OPTIONAL_LIVE_COLLECTIONS=new Set(['products','users']);
+// Sólo afectan nombres mostrados; su ausencia se avisa pero no invalida las cifras.
+const DISPLAY_ONLY_COLLECTIONS=new Set(['users']);
 let realtimeUnsubscribers=[];
+let realtimeDetailUnsubscribers=[];
 let realtimeData={};
 let realtimeReady=new Set();
 let realtimeErrors=new Set();
 let realtimeTimer=null;
+let realtimeRestartTimer=null;
+let realtimeGeneration=0;
+let dataReady=false;
+function rangoConsultaFirestore(){
+  const {inicio,fin}=rangoFechasSeleccionado();
+  if(!inicio||!fin)throw new Error('Selecciona un rango de fechas válido.');
+  const days=diasIncluidos(inicio,fin);
+  if(days>MAX_QUERY_RANGE_DAYS)throw new Error(`El rango máximo es de ${MAX_QUERY_RANGE_DAYS} días.`);
+  return {inicio:sumarDias(inicio,-7),fin,visibleInicio:inicio,visibleFin:fin};
+}
+function consultaPorFecha(nombre,inicio,fin){
+  return db.collection(nombre).where('date','>=',inicio).where('date','<=',fin);
+}
 function initFirebase(){
   const missing=!FIREBASE_CONFIG.projectId || String(FIREBASE_CONFIG.projectId).startsWith('PEGA_AQUI');
   if(missing){
@@ -664,6 +706,32 @@ function initFirebase(){
   if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
   auth=firebase.auth();
   db=firebase.firestore();
+}
+function dashboardAccessError(code,message){
+  const error=new Error(message);
+  error.code=code;
+  return error;
+}
+async function validateDashboardAccess(user){
+  const tokenResult=await user.getIdTokenResult();
+  const userId=String(tokenResult.claims.userId||'').trim();
+  if(!userId)throw dashboardAccessError('dashboard/missing-claim','La cuenta no tiene un perfil operativo vinculado.');
+  const snapshot=await db.collection('users').doc(userId).get();
+  if(!snapshot.exists)throw dashboardAccessError('dashboard/missing-profile','No existe el perfil operativo de esta cuenta.');
+  const profile={userId,...snapshot.data()};
+  if(profile.isActive!==true||profile.deletedAt)throw dashboardAccessError('dashboard/inactive','La cuenta está desactivada.');
+  if(profile.authUid&&profile.authUid!==user.uid)throw dashboardAccessError('dashboard/identity-mismatch','La cuenta no coincide con el perfil operativo.');
+  const role=String(profile.role||tokenResult.claims.role||'').trim();
+  if(!DASHBOARD_ALLOWED_ROLES.has(role))throw dashboardAccessError('dashboard/forbidden','Esta cuenta no tiene acceso al dashboard.');
+  if(tokenResult.claims.role&&tokenResult.claims.role!==role)throw dashboardAccessError('dashboard/role-mismatch','El rol de la sesión está desactualizado. Cierra sesión e intenta de nuevo.');
+  return {...profile,role};
+}
+function loginErrorMessage(error){
+  if(String(error?.code||'').startsWith('dashboard/'))return error.message;
+  if(error?.code==='auth/network-request-failed')return 'No se pudo conectar con Firebase. Revisa tu conexión.';
+  if(error?.code==='auth/too-many-requests')return 'Demasiados intentos. Espera unos minutos.';
+  if(error?.code==='auth/user-disabled')return 'La cuenta está desactivada.';
+  return 'Usuario o contraseña incorrectos';
 }
 function mostrarLogin(){
   const login=g('login-screen'),dash=g('dashboard-shell');
@@ -687,6 +755,7 @@ function ocultarErrorLogin(){
 }
 async function iniciarSesion(email,password){
   initFirebase();
+  await authPersistenceReady;
   return auth.signInWithEmailAndPassword(email,password);
 }
 function cerrarSesion(){
@@ -696,6 +765,7 @@ function cerrarSesion(){
 }
 function configurarLogin(){
   initFirebase();
+  authPersistenceReady=auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
   const form=g('login-form');
   const submit=g('login-submit');
   if(form){
@@ -706,29 +776,41 @@ function configurarLogin(){
       try{
         await iniciarSesion(g('login-email').value.trim(),g('login-password').value);
       }catch(err){
-        mostrarErrorLogin('Usuario o contraseña incorrectos');
+        mostrarErrorLogin(loginErrorMessage(err));
       }finally{
         if(submit)submit.disabled=false;
       }
     });
   }
-  auth.onAuthStateChanged(user=>{
+  auth.onIdTokenChanged(async user=>{
+    const sequence=++authValidationSequence;
     authReady=true;
     if(user){
-      mostrarDashboard();
-      iniciarActualizacionTiempoReal();
+      detenerActualizacionTiempoReal();
+      dashboardProfile=null;
+      mostrarLogin();
+      try{
+        const profile=await validateDashboardAccess(user);
+        if(sequence!==authValidationSequence)return;
+        dashboardProfile=profile;
+        ocultarErrorLogin();
+        mostrarDashboard();
+        iniciarActualizacionTiempoReal();
+      }catch(error){
+        if(sequence!==authValidationSequence)return;
+        dashboardProfile=null;
+        const message=loginErrorMessage(error);
+        await auth.signOut().catch(()=>{});
+        mostrarErrorLogin(message);
+      }
     }else{
       detenerActualizacionTiempoReal();
+      dashboardProfile=null;
       mostrarLogin();
       dV=[];dD=[];dR=[];dT={};dP={};dU={};dC=[];dRT=[];dCC=[];
     }
   });
 }
-async function fetchCol(name){
-  const snap=await db.collection(name).get();
-  return snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-}
-
 function horaActual(){
   const n=new Date();
   return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
@@ -1025,6 +1107,9 @@ function aplicarDatosRemotos(datos,{tiempoReal=false}={}){
   normalizeAssignments(datos.dailyStoreAssignments||[]);
   normalizeRoutesFromData();
   lastSnapshotAppliedAt=new Date();
+  dataReady=realtimeReady.size===FIRESTORE_LIVE_COLLECTIONS.length&&coleccionesBloqueantes().length===0;
+  const exportButton=g('export-button');
+  if(exportButton)exportButton.disabled=!dataReady;
 
   const sel=g('f-ruta');const prev=sel.value;
   sel.innerHTML='<option value="">Todas las rutas</option>';
@@ -1040,15 +1125,19 @@ function aplicarDatosRemotos(datos,{tiempoReal=false}={}){
 
   renderizar();
   if(tiempoReal){
-    const parcial=realtimeErrors.size>0;
+    const bloqueantes=coleccionesBloqueantes();
+    const degradadas=[...realtimeErrors];
     actualizarEstadoDatos(
-      parcial?`⚠ Parcial ${horaActual()}`:`● En vivo ${horaActual()}`,
-      parcial?`Sin acceso temporal a: ${[...realtimeErrors].join(', ')}`:'Los datos se actualizan automáticamente desde Firestore'
+      bloqueantes.length?`⚠ Parcial ${horaActual()}`:degradadas.length?`● En vivo ${horaActual()} · catálogo limitado`:`● En vivo ${horaActual()}`,
+      degradadas.length?`Sin acceso temporal a: ${degradadas.join(', ')}`:'Los datos se actualizan automáticamente desde Firestore'
     );
     const err=g('err');
     if(err){
-      if(parcial){
-        err.textContent=`⚠ Actualización parcial. No se pudo escuchar: ${[...realtimeErrors].join(', ')}.`;
+      if(bloqueantes.length){
+        err.textContent=`⚠ Actualización parcial. No se pudo escuchar: ${bloqueantes.join(', ')}.`;
+        err.style.display='block';
+      }else if(degradadas.length){
+        err.textContent=`⚠ Cifras completas, pero sin acceso a ${degradadas.join(', ')}; se muestran identificadores en lugar de nombres.`;
         err.style.display='block';
       }else{
         err.style.display='none';
@@ -1059,11 +1148,18 @@ function aplicarDatosRemotos(datos,{tiempoReal=false}={}){
 
 function detenerActualizacionTiempoReal(){
   realtimeUnsubscribers.forEach(unsubscribe=>{try{unsubscribe()}catch(e){console.warn('No se pudo cerrar un listener de Firestore',e)}});
+  realtimeDetailUnsubscribers.forEach(unsubscribe=>{try{unsubscribe()}catch(e){console.warn('No se pudo cerrar un listener de detalles',e)}});
   realtimeUnsubscribers=[];
+  realtimeDetailUnsubscribers=[];
   realtimeData={};
   realtimeReady=new Set();
   realtimeErrors=new Set();
+  dataReady=false;
+  const exportButton=g('export-button');
+  if(exportButton)exportButton.disabled=true;
   if(realtimeTimer){clearTimeout(realtimeTimer);realtimeTimer=null}
+  if(realtimeRestartTimer){clearTimeout(realtimeRestartTimer);realtimeRestartTimer=null}
+  realtimeGeneration++;
 }
 
 function programarAplicacionTiempoReal(){
@@ -1076,63 +1172,117 @@ function programarAplicacionTiempoReal(){
   },180);
 }
 
-function iniciarActualizacionTiempoReal(){
-  initFirebase();
-  if(!authReady||!auth.currentUser)return;
-  detenerActualizacionTiempoReal();
-  mostrarCargaInicial();
-  actualizarEstadoDatos('● Conectando…');
-
-  FIRESTORE_LIVE_COLLECTIONS.forEach(nombre=>{
-    const unsubscribe=db.collection(nombre).onSnapshot(snapshot=>{
-      realtimeData[nombre]=snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
-      realtimeReady.add(nombre);
-      realtimeErrors.delete(nombre);
+function iniciarDetallesTiempoReal(visits,generation){
+  realtimeDetailUnsubscribers.forEach(unsubscribe=>{try{unsubscribe()}catch(_){}});
+  realtimeDetailUnsubscribers=[];
+  realtimeData.visitDetails=[];
+  realtimeReady.delete('visitDetails');
+  realtimeErrors.delete('visitDetails');
+  const ids=[...new Set((visits||[]).map(o=>val(o,'visitId','VISITA_ID','id')).filter(Boolean))];
+  const batches=dividirEnLotes(ids,FIRESTORE_IN_LIMIT);
+  if(!batches.length){
+    realtimeReady.add('visitDetails');
+    programarAplicacionTiempoReal();
+    return;
+  }
+  const rowsByBatch=new Map();
+  const readyBatches=new Set();
+  const failedBatches=new Set();
+  batches.forEach((batch,index)=>{
+    const unsubscribe=db.collection('visitDetails').where('visitId','in',batch).onSnapshot(snapshot=>{
+      if(generation!==realtimeGeneration)return;
+      rowsByBatch.set(index,snapshot.docs.map(doc=>({id:doc.id,...doc.data()})));
+      readyBatches.add(index);
+      failedBatches.delete(index);
+      if(!failedBatches.size)realtimeErrors.delete('visitDetails');
+      realtimeData.visitDetails=[...rowsByBatch.values()].flat();
+      if(readyBatches.size===batches.length)realtimeReady.add('visitDetails');
       programarAplicacionTiempoReal();
     },error=>{
-      const opcional=OPTIONAL_LIVE_COLLECTIONS.has(nombre);
-      const log=opcional?console.warn:console.error;
-      log(`Error en actualización Firestore (${nombre})`,error);
-      if(!Object.prototype.hasOwnProperty.call(realtimeData,nombre))realtimeData[nombre]=[];
-      realtimeReady.add(nombre);
-      if(opcional)realtimeErrors.delete(nombre);else realtimeErrors.add(nombre);
+      if(generation!==realtimeGeneration)return;
+      console.error('Error en actualización Firestore (visitDetails)',error);
+      rowsByBatch.set(index,[]);
+      readyBatches.add(index);
+      failedBatches.add(index);
+      realtimeErrors.add('visitDetails');
+      realtimeData.visitDetails=[...rowsByBatch.values()].flat();
+      if(readyBatches.size===batches.length)realtimeReady.add('visitDetails');
       programarAplicacionTiempoReal();
     });
-    realtimeUnsubscribers.push(unsubscribe);
+    realtimeDetailUnsubscribers.push(unsubscribe);
   });
+}
+
+function coleccionesBloqueantes(){
+  return [...realtimeErrors].filter(nombre=>!DISPLAY_ONLY_COLLECTIONS.has(nombre));
+}
+
+function registrarListener(nombre,query,generation,{onRows=null}={}){
+  const unsubscribe=query.onSnapshot(snapshot=>{
+    if(generation!==realtimeGeneration)return;
+    const rows=snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
+    realtimeData[nombre]=rows;
+    realtimeReady.add(nombre);
+    realtimeErrors.delete(nombre);
+    if(onRows)onRows(rows);
+    programarAplicacionTiempoReal();
+  },error=>{
+    if(generation!==realtimeGeneration)return;
+    const log=DISPLAY_ONLY_COLLECTIONS.has(nombre)?console.warn:console.error;
+    log(`Error en actualización Firestore (${nombre})`,error);
+    if(!Object.prototype.hasOwnProperty.call(realtimeData,nombre))realtimeData[nombre]=[];
+    realtimeReady.add(nombre);
+    realtimeErrors.add(nombre);
+    programarAplicacionTiempoReal();
+  });
+  realtimeUnsubscribers.push(unsubscribe);
+}
+
+function programarReinicioTiempoReal(){
+  if(!authReady||!auth?.currentUser||!dashboardProfile)return;
+  if(realtimeRestartTimer)clearTimeout(realtimeRestartTimer);
+  realtimeRestartTimer=setTimeout(()=>{
+    realtimeRestartTimer=null;
+    iniciarActualizacionTiempoReal();
+  },250);
+}
+
+function iniciarActualizacionTiempoReal(){
+  initFirebase();
+  if(!authReady||!auth.currentUser||!dashboardProfile)return;
+  detenerActualizacionTiempoReal();
+  const generation=realtimeGeneration;
+  mostrarCargaInicial();
+  actualizarEstadoDatos('● Conectando…');
+  let range;
+  try{
+    range=rangoConsultaFirestore();
+  }catch(error){
+    const eb=g('err');
+    eb.textContent=`⚠ ${error.message}`;
+    eb.style.display='block';
+    actualizarEstadoDatos('⚠ Rango inválido',error.message);
+    return;
+  }
+  registrarListener('routeInventories',consultaPorFecha('routeInventories',range.inicio,range.fin),generation);
+  registrarListener('cashCuts',consultaPorFecha('cashCuts',range.inicio,range.fin),generation);
+  registrarListener('dailyStoreAssignments',consultaPorFecha('dailyStoreAssignments',range.inicio,range.fin),generation);
+  registrarListener('visits',consultaPorFecha('visits',range.inicio,range.fin),generation,{
+    onRows:rows=>iniciarDetallesTiempoReal(rows,generation)
+  });
+  registrarListener('stores',db.collection('stores'),generation);
+  registrarListener('products',db.collection('products'),generation);
+  registrarListener('users',db.collection('users'),generation);
 }
 
 async function cargarDatos(){
   initFirebase();
-  if(!authReady || !auth.currentUser){
+  if(!authReady || !auth.currentUser || !dashboardProfile){
     mostrarLogin();
     return;
   }
-  mostrarCargaInicial();
-  actualizarEstadoDatos('↻ Actualizando…','Actualización manual desde Firestore');
-  try{
-    initFirebase();
-
-    const [routeInventories,visits,visitDetails,cashCuts,stores,products,dailyAssignments,users]=await Promise.all([
-      fetchCol('routeInventories').catch(()=>[]),
-      fetchCol('visits').catch(()=>[]),
-      fetchCol('visitDetails').catch(()=>[]),
-      fetchCol('cashCuts').catch(()=>[]),
-      fetchCol('stores').catch(()=>[]),
-      fetchCol('products').catch(()=>[]),
-      fetchCol('dailyStoreAssignments').catch(()=>[]),
-      fetchCol('users').catch(()=>[])
-    ]);
-
-    aplicarDatosRemotos({routeInventories,visits,visitDetails,cashCuts,stores,products,dailyStoreAssignments:dailyAssignments,users});
-    actualizarEstadoDatos(`↻ Actualizado ${horaActual()}`,'Actualización manual completada; la escucha en tiempo real continúa activa');
-  }catch(e){
-    console.error(e);
-    const eb=g('err');
-    eb.textContent='⚠ '+e.message+' — Revisa FIREBASE_CONFIG, reglas de Firestore o conexión.';
-    eb.style.display='block';
-    ['falt-load','rutas-load','t-load','p-load','pend-load','carga-load'].forEach(id=>{const l=g(id);if(l)l.style.display='none'});
-  }
+  actualizarEstadoDatos('↻ Reconectando…','Reiniciando listeners acotados de Firestore');
+  iniciarActualizacionTiempoReal();
 }
 
 const esc=s=>String(s===undefined||s===null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1487,11 +1637,28 @@ function renderTiendasPendientes(rf,inicio,fin,vIdsVisitadas){
   if(!pendientes.length){g('e-pend').style.display='block';g('e-pend').textContent='Todas las tiendas visitadas ✓';return}
   pendientes.slice(0,20).forEach(tid=>{
     const info=dT[tid]||{nombre:tid,colonia:'',municipio:'',telefono:''};
-    const tel=info.telefono||'';
-    const telBtn=tel?`<a href="tel:${tel}" style="font-family:var(--mono);font-size:11px;color:var(--green);text-decoration:none;background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.2);padding:5px 10px;border-radius:6px;white-space:nowrap">📞 ${tel}</a>`:`<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">sin tel</span>`;
+    const tel=String(info.telefono||'').trim();
+    const safeTel=tel.replace(/[^\d+]/g,'');
     const row=document.createElement('div');
     row.style.cssText='display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--border)';
-    row.innerHTML=`<div style="min-width:0;flex:1"><div class="tn" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${info.nombre}</div><div class="tm" style="font-size:11px">${info.colonia||info.municipio||'—'}</div></div>${telBtn}`;
+    const text=document.createElement('div');
+    text.style.cssText='min-width:0;flex:1';
+    const name=document.createElement('div');
+    name.className='tn';
+    name.style.cssText='font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    name.textContent=info.nombre||tid;
+    const area=document.createElement('div');
+    area.className='tm';
+    area.style.fontSize='11px';
+    area.textContent=info.colonia||info.municipio||'—';
+    text.append(name,area);
+    const contact=document.createElement(safeTel?'a':'span');
+    contact.style.cssText=safeTel
+      ?'font-family:var(--mono);font-size:11px;color:var(--green);text-decoration:none;background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.2);padding:5px 10px;border-radius:6px;white-space:nowrap'
+      :'font-family:var(--mono);font-size:10px;color:var(--text3)';
+    contact.textContent=safeTel?`Tel. ${tel}`:'sin tel';
+    if(safeTel)contact.href=`tel:${safeTel}`;
+    row.append(text,contact);
     body.appendChild(row);
   });
   if(pendientes.length>20){
@@ -1517,7 +1684,7 @@ function renderRutas(det,grupos=ventasPorRepartidorData()){
     const dia=DIAS[num]||'';
     const pill=est==='Completa'?`<span class="badge bok"><span class="bdot"></span>Completa</span>`:est==='Abierta'?`<span class="badge bblue"><span class="bdot"></span>En curso</span>`:est==='Revisar'?`<span class="badge berr"><span class="bdot"></span>Revisar</span>`:`<span class="badge bwarn"><span class="bdot"></span>${est}</span>`;
     const tr=document.createElement('tr');tr.className='trc';
-    tr.innerHTML=`<td><div class="tn">${r.RUTA||r.RUTA_ID}</div></td><td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${dia}</td><td class="r">${r.TOTAL_TIENDAS||'—'}</td><td class="r" style="color:var(--green)">${fp(cob[r.RUTA_ID]||0)}</td><td>${pill}</td>`;
+    tr.innerHTML=`<td><div class="tn">${esc(r.RUTA||r.RUTA_ID)}</div></td><td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${esc(dia)}</td><td class="r">${esc(r.TOTAL_TIENDAS||'—')}</td><td class="r" style="color:var(--green)">${fp(cob[r.RUTA_ID]||0)}</td><td>${pill}</td>`;
     tbody.appendChild(tr);
   });
   g('t-rutas').style.display='table';
@@ -1825,7 +1992,7 @@ function renderProductos(det){
   const pm=g('pmets');pm.innerHTML='';
   prods.forEach(([pid,p])=>{
     const col=PCOL[pid]||'var(--green)',nom=PSHORT[pid]||pid;
-    pm.innerHTML+=`<div class="pmet"><div class="pmet-acc" style="background:${col}"></div><div class="pmet-lbl">${nom}</div><div class="pmet-val" style="color:${col}">${fp(p.amount)}</div><div class="pmet-sub">${p.vend} paq · ${fp(productPrice(pid))} referencia</div></div>`;
+    pm.innerHTML+=`<div class="pmet"><div class="pmet-acc" style="background:${col}"></div><div class="pmet-lbl">${esc(nom)}</div><div class="pmet-val" style="color:${col}">${fp(p.amount)}</div><div class="pmet-sub">${p.vend} paq · ${fp(productPrice(pid))} referencia</div></div>`;
   });
   if(!prods.length){g('e-prod').style.display='block';return}
   const pb=g('p-body');pb.innerHTML='';
@@ -1834,12 +2001,12 @@ function renderProductos(det){
     const col=PCOL[pid]||'var(--green)',nom=PNOM[pid]||pid;
     const pct=p.ent>0?Math.round((p.vend/p.ent)*100):0;
     const pctWidth=Math.min(100,pct);
-    pb.innerHTML+=`<div class="pr"><div class="pn">${nom}</div><div class="pw">
+    pb.innerHTML+=`<div class="pr"><div class="pn">${esc(nom)}</div><div class="pw">
       <div class="ph"><span>${p.vend} vendidos en el rango</span><span style="color:${col};font-weight:700">${pct}%</span></div>
       <div class="pt"><div class="pf" style="width:${pctWidth}%;background:${col}"></div></div>
       <div class="pfoot"><span>${fp(p.amount)}</span><span>${p.normal} venta normal</span><span style="color:var(--purple)">${p.consigna} consigna</span><span class="pdev">${p.dev} dev.</span></div>
     </div></div>`;
-    fb.innerHTML+=`<div class="pr"><div class="pn">${PSHORT[pid]||pid}</div><div class="pw">
+    fb.innerHTML+=`<div class="pr"><div class="pn">${esc(PSHORT[pid]||pid)}</div><div class="pw">
       <div class="pt"><div class="pf" style="width:${pctWidth}%;background:${col}"></div></div>
       <div class="pfoot"><span>${p.vend} vend.</span><span class="pfalt">${p.fin} falt · ${fp(p.finAmount)}</span><span class="pdev">${p.dev} dev.</span></div>
     </div></div>`;
@@ -1935,7 +2102,7 @@ function renderCarga(){
     const pct=disp>0?Math.round((ent/disp)*100):0;
     const tr=document.createElement('tr');tr.className='trc';
     tr.innerHTML=`
-      <td><div style="font-weight:600;font-size:13px">${nom}</div>
+      <td><div style="font-weight:600;font-size:13px">${esc(nom)}</div>
         <div style="margin-top:4px">
           <div style="height:3px;background:var(--s3);border-radius:2px;width:120px;overflow:hidden">
             <div style="height:100%;width:${pct}%;background:${col};border-radius:2px"></div>
@@ -1966,7 +2133,7 @@ function renderCorte(grupos=ventasPorRepartidorData()){
     if(gr.reconciliado)conciliados++;
     const pill=gr.reconciliado?`<span class="badge bok"><span class="bdot"></span>CONCILIADO</span>`:`<span class="badge berr"><span class="bdot"></span>REVISAR</span>`;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td><div class="tn">${esc(driverName(gr.repartidorId))}</div><div class="tm">${esc(gr.repartidorId||'')}</div></td><td><div class="tn">${esc(gr.ruta||'—')}</div></td><td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${fd(gr.fecha)}</td><td class="r" style="color:var(--green)">${fp(gr.totalVendido)}</td><td class="r">${gr.estadoCorte.definitive?fp(gr.totalCorte):'—'}</td><td class="r" style="color:var(--blue)">${fp(gr.efectivo)}</td><td class="r" style="color:var(--purple)">${fp(gr.transferencia)}</td><td class="r" style="color:var(--red)">${fp(gr.pendiente)}</td><td class="r">${fp(gr.totalPagos)}</td><td class="r" style="color:${Math.abs(gr.diferenciaVenta)>MONEY_TOLERANCE?'var(--red)':'var(--green)'}">${fp(gr.diferenciaVenta)}</td><td class="r" style="color:${Math.abs(gr.diferencia)>MONEY_TOLERANCE?'var(--red)':'var(--green)'}">${gr.corte?fp(gr.diferencia):'—'}</td><td>${esc(gr.fuenteFinanciera)}</td><td>${pill}</td>`;
+    tr.innerHTML=`<td><div class="tn">${esc(driverName(gr.repartidorId))}</div><div class="tm">${esc(gr.repartidorId||'')}</div></td><td><div class="tn">${esc(gr.ruta||'—')}</div></td><td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${esc(fd(gr.fecha))}</td><td class="r" style="color:var(--green)">${fp(gr.totalVendido)}</td><td class="r">${gr.estadoCorte.definitive?fp(gr.totalCorte):'—'}</td><td class="r" style="color:var(--blue)">${fp(gr.efectivo)}</td><td class="r" style="color:var(--purple)">${fp(gr.transferencia)}</td><td class="r" style="color:var(--red)">${fp(gr.pendiente)}</td><td class="r">${fp(gr.totalPagos)}</td><td class="r" style="color:${Math.abs(gr.diferenciaVenta)>MONEY_TOLERANCE?'var(--red)':'var(--green)'}">${fp(gr.diferenciaVenta)}</td><td class="r" style="color:${Math.abs(gr.diferencia)>MONEY_TOLERANCE?'var(--red)':'var(--green)'}">${gr.corte?fp(gr.diferencia):'—'}</td><td>${esc(gr.fuenteFinanciera)}</td><td>${pill}</td>`;
     tbody.appendChild(tr);
   });
   g('cc-total').textContent=fp(total);
@@ -2102,6 +2269,10 @@ function safeFilePart(s){
 }
 
 function exportarExcel(){
+  if(!dataReady){
+    alert('La información todavía está cargando o está incompleta. Espera a que el estado indique En vivo.');
+    return;
+  }
   const ctx=buildExportContext();
   const hayDatos=ctx.detalles.length||ctx.visitas.length||ctx.inventario.length||ctx.cortes.length;
   if(ctx.fecha&&!hayDatos){
@@ -2134,6 +2305,8 @@ function exportarExcel(){
   const resumen=[
     ['Rango de fechas',ctx.rangoLabel],
     ['Ruta filtrada',rutaFiltro],
+    ['Actualizado',lastSnapshotAppliedAt?lastSnapshotAppliedAt.toLocaleString('es-MX'):''],
+    ['Estado de datos',ctx.grupos.every(gr=>gr.estadoCorte.definitive)?'Definitivo':'Incluye información preliminar'],
     ['Total vendido',+totalVendido.toFixed(2)],
     ['Total efectivo',+totalEfectivo.toFixed(2)],
     ['Total transferencia',+totalTransfer.toFixed(2)],
@@ -2149,7 +2322,7 @@ function exportarExcel(){
   ];
   resumen.push(['',''],['TOTALES POR REPARTIDOR','']);
   gruposRep.forEach(gr=>resumen.push([`${driverName(gr.repartidorId)} · ${gr.ruta}`,`Vendido ${fp(gr.totalVendido)} | Pendiente ${fp(gr.pendiente)} | Dev. ${gr.devoluciones}`]));
-  const wsResumen=sheetFromRows([['Campo','Valor'],...resumen],{moneyCols:[1],highlight:[{row:6,type:'bad'},{row:10,type:conciliados===gruposRep.length?'info':'bad'},{row:11,type:diferenciaVenta>MONEY_TOLERANCE?'bad':'info'},{row:12,type:Math.abs(diferenciaEfectivo)>MONEY_TOLERANCE?'bad':'info'}]});
+  const wsResumen=sheetFromRows([['Campo','Valor'],...resumen],{moneyCols:[1],highlight:[{row:8,type:'bad'},{row:12,type:conciliados===gruposRep.length?'info':'bad'},{row:13,type:diferenciaVenta>MONEY_TOLERANCE?'bad':'info'},{row:14,type:Math.abs(diferenciaEfectivo)>MONEY_TOLERANCE?'bad':'info'}]});
   XLSX.utils.book_append_sheet(wb,wsResumen,'Resumen');
 
   const contadora=[['Fecha','Ruta','Repartidor','Tienda ID','Tienda','Colonia','Encargado','Producto','Cantidad entregada','Merma / devolución','Vendido real','Precio unitario','Total venta','Forma de pago','Efectivo','Transferencia','Pendiente por cobrar','Motivo pendiente','Observación pendiente','Estado tienda','Motivo no abrió','Observación no abrió','Corte cerrado','Efectivo esperado','Efectivo entregado','Diferencia efectivo','Motivo faltante/sobrante']];
