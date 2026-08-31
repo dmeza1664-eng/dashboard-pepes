@@ -480,6 +480,7 @@ const DASHBOARD_VERSION='1.2.1-preview';
 const DEFAULT_PRODUCT_PRICE=17.50;
 const MONEY_TOLERANCE=0.01;
 const DASHBOARD_ALLOWED_ROLES=new Set(['Administrador','Supervisor','Contadora']);
+const DASHBOARD_ALLOWED_USER_IDS=new Set(['admin1']);
 const MAX_QUERY_RANGE_DAYS=31;
 const FIRESTORE_IN_LIMIT=30;
 const PNOM={GC001:'Galletas Chocolate',GA002:'Galletas Ate',GN003:'Galletas Nuez',GAL004:'Galletas Alfajor',P001:'Galletas Chocolate',P002:'Galletas Ate',P003:'Galletas Nuez',P004:'Galletas Alfajor'};
@@ -722,7 +723,7 @@ async function validateDashboardAccess(user){
   if(profile.isActive!==true||profile.deletedAt)throw dashboardAccessError('dashboard/inactive','La cuenta está desactivada.');
   if(profile.authUid&&profile.authUid!==user.uid)throw dashboardAccessError('dashboard/identity-mismatch','La cuenta no coincide con el perfil operativo.');
   const role=String(profile.role||tokenResult.claims.role||'').trim();
-  if(!DASHBOARD_ALLOWED_ROLES.has(role))throw dashboardAccessError('dashboard/forbidden','Esta cuenta no tiene acceso al dashboard.');
+  if(!DASHBOARD_ALLOWED_USER_IDS.has(userId)||!DASHBOARD_ALLOWED_ROLES.has(role))throw dashboardAccessError('dashboard/forbidden','Esta cuenta no tiene acceso al dashboard.');
   if(tokenResult.claims.role&&tokenResult.claims.role!==role)throw dashboardAccessError('dashboard/role-mismatch','El rol de la sesión está desactualizado. Cierra sesión e intenta de nuevo.');
   return {...profile,role};
 }

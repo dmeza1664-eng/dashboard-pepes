@@ -143,6 +143,8 @@ assert.strictEqual(pendingPayment.reconciliado, true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Supervisor')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Contadora')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Repartidor')"), false);
+  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_USER_IDS.has('admin1')"), true);
+  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_USER_IDS.has('goreti')"), false);
 
   fields["f-date-mode"].value = "range";
   fields["f-fecha-inicio"].value = "2026-07-02";
@@ -161,14 +163,28 @@ assert.strictEqual(pendingPayment.reconciliado, true);
   vm.runInContext(`
     db={collection:()=>({doc:()=>({get:async()=>({
       exists:true,
-      data:()=>({role:'Supervisor',isActive:true,authUid:'auth-1'})
+      data:()=>({role:'Administrador',isActive:true,authUid:'auth-1'})
     })})})};
   `, context);
   const allowed = await vm.runInContext(`validateDashboardAccess({
     uid:'auth-1',
-    getIdTokenResult:async()=>({claims:{userId:'user-1',role:'Supervisor'}})
+    getIdTokenResult:async()=>({claims:{userId:'admin1',role:'Administrador'}})
   })`, context);
-  assert.strictEqual(allowed.role, "Supervisor");
+  assert.strictEqual(allowed.role, "Administrador");
+
+  vm.runInContext(`
+    db={collection:()=>({doc:()=>({get:async()=>({
+      exists:true,
+      data:()=>({role:'Supervisor',isActive:true,authUid:'auth-1'})
+    })})})};
+  `, context);
+  await assert.rejects(
+    vm.runInContext(`validateDashboardAccess({
+      uid:'auth-1',
+      getIdTokenResult:async()=>({claims:{userId:'goreti',role:'Supervisor'}})
+    })`, context),
+    /no tiene acceso/i
+  );
 
   vm.runInContext(`
     db={collection:()=>({doc:()=>({get:async()=>({
@@ -187,13 +203,13 @@ assert.strictEqual(pendingPayment.reconciliado, true);
   vm.runInContext(`
     db={collection:()=>({doc:()=>({get:async()=>({
       exists:true,
-      data:()=>({role:'Contadora',isActive:false,authUid:'auth-1'})
+      data:()=>({role:'Administrador',isActive:false,authUid:'auth-1'})
     })})})};
   `, context);
   await assert.rejects(
     vm.runInContext(`validateDashboardAccess({
       uid:'auth-1',
-      getIdTokenResult:async()=>({claims:{userId:'user-1',role:'Contadora'}})
+      getIdTokenResult:async()=>({claims:{userId:'admin1',role:'Administrador'}})
     })`, context),
     /desactivada/i
   );
