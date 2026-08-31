@@ -144,6 +144,7 @@ assert.strictEqual(pendingPayment.reconciliado, true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Contadora')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Repartidor')"), false);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_USER_IDS.has('admin1')"), true);
+  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_USER_IDS.has('carloszerme1')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_USER_IDS.has('goreti')"), false);
 
   fields["f-date-mode"].value = "range";
