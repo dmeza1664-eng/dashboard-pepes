@@ -1,0 +1,183 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 1.0.3 can operate without Firebase Auth. Keep only operational data
+    // compatible while devices move to 1.0.4; this window closes automatically.
+    function legacyOperationalClient() {
+      return request.time < timestamp.date(2026, 8, 12)
+        && (request.auth == null || !('userId' in request.auth.token));
+    }
+
+    function isCurrentUser(userId) {
+      return activeUser() && request.auth.token.userId == userId;
+    }
+
+    function currentProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.token.userId)).data;
+    }
+
+    function activeUser() {
+      return signedIn()
+        && request.auth.token.userId is string
+        && currentProfile().isActive == true
+        && currentProfile().authUid == request.auth.uid;
+    }
+
+    function hasRole(role) {
+      return activeUser() && currentProfile().role == role;
+    }
+
+    function isAdministrator() {
+      return hasRole('Administrador');
+    }
+
+    function isOfficeDashboardUser() {
+      return hasRole('Administrador') || hasRole('Supervisor') || hasRole('Contadora');
+    }
+
+    function isOwnRepartidorCreate() {
+      return hasRole('Repartidor')
+        && request.resource.data.repartidorId == request.auth.token.userId;
+    }
+
+    function isOwnRepartidorUpdate() {
+      return hasRole('Repartidor')
+        && resource.data.repartidorId == request.auth.token.userId
+        && request.resource.data.repartidorId == request.auth.token.userId;
+    }
+
+    function ownsVisit(visitId) {
+      return hasRole('Repartidor')
+        && get(/databases/$(database)/documents/visits/$(visitId)).data.repartidorId == request.auth.token.userId;
+    }
+
+    match /users/{userId} {
+      allow read: if legacyOperationalClient() || isCurrentUser(userId) || isOfficeDashboardUser();
+      allow write: if false;
+    }
+
+    match /userCredentials/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /usernames/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /loginAttempts/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /products/{document} {
+      allow read: if activeUser();
+      allow write: if isAdministrator();
+    }
+
+    match /stores/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create: if legacyOperationalClient() || (activeUser()
+        && request.resource.data.createdBy == request.auth.token.userId
+        && (isAdministrator() || (
+          hasRole('Repartidor')
+          && request.resource.data.status == 'PENDIENTE_REVISION'
+          && request.resource.data.approvedBy == null
+          && request.resource.data.approvedAt == null
+        )));
+      allow update: if legacyOperationalClient() || isAdministrator()
+        || (hasRole('Repartidor')
+          && resource.data.createdBy == request.auth.token.userId
+          && request.resource.data.createdBy == request.auth.token.userId
+          && request.resource.data.storeId == resource.data.storeId
+          && request.resource.data.documentId == resource.data.documentId
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.approvedBy == resource.data.approvedBy
+          && request.resource.data.approvedAt == resource.data.approvedAt
+          && request.resource.data.routeId == resource.data.routeId
+          && request.resource.data.visitOrder == resource.data.visitOrder);
+      allow delete: if false;
+    }
+
+    match /routeInventories/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create: if legacyOperationalClient() || isAdministrator() || isOwnRepartidorCreate();
+      allow update: if legacyOperationalClient() || isAdministrator() || isOwnRepartidorUpdate();
+      allow delete: if false;
+    }
+
+    match /visits/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create: if legacyOperationalClient() || isAdministrator() || isOwnRepartidorCreate();
+      allow update: if legacyOperationalClient() || isAdministrator() || isOwnRepartidorUpdate();
+      allow delete: if false;
+    }
+
+    match /visitDetails/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create: if legacyOperationalClient() || isAdministrator() || ownsVisit(request.resource.data.visitId);
+      allow update: if legacyOperationalClient() || isAdministrator()
+        || (request.resource.data.visitId == resource.data.visitId && ownsVisit(resource.data.visitId));
+      allow delete: if false;
+    }
+
+    match /cashCuts/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create: if legacyOperationalClient() || isAdministrator() || isOwnRepartidorCreate();
+      allow update: if legacyOperationalClient() || isAdministrator() || isOwnRepartidorUpdate();
+      allow delete: if false;
+    }
+
+    match /dailyStoreAssignments/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create: if legacyOperationalClient() || isAdministrator()
+        || (hasRole('Repartidor')
+          && request.resource.data.repartidorId == request.auth.token.userId
+          && request.resource.data.createdBy == request.auth.token.userId
+          && request.resource.data.action == 'ADD'
+          && get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.createdBy == request.auth.token.userId);
+      allow update: if legacyOperationalClient() || isAdministrator();
+      allow delete: if false;
+    }
+
+    match /captureDateAuthorizations/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create, update: if legacyOperationalClient() || isAdministrator();
+      allow delete: if false;
+    }
+
+    match /storeConsignments/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create: if legacyOperationalClient() || isAdministrator()
+        || (hasRole('Repartidor')
+          && request.resource.data.updatedBy == request.auth.token.userId
+          && request.resource.data.approvedBy == null
+          && request.resource.data.approvedAt == null
+          && request.resource.data.status in ['PROVISIONAL', 'PENDIENTE_REVISION']);
+      allow update: if legacyOperationalClient() || isAdministrator()
+        || (hasRole('Repartidor')
+          && request.resource.data.updatedBy == request.auth.token.userId
+          && request.resource.data.consignmentId == resource.data.consignmentId
+          && request.resource.data.storeId == resource.data.storeId
+          && request.resource.data.productId == resource.data.productId
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.approvedBy == resource.data.approvedBy
+          && request.resource.data.approvedAt == resource.data.approvedAt);
+      allow delete: if false;
+    }
+
+    match /consignmentSwaps/{document} {
+      allow read: if legacyOperationalClient() || activeUser();
+      allow create: if legacyOperationalClient() || isAdministrator() || isOwnRepartidorCreate();
+      allow update: if legacyOperationalClient() || isAdministrator() || isOwnRepartidorUpdate();
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

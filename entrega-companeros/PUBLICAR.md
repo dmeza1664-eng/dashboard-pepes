@@ -1,0 +1,73 @@
+# Entrega para publicar el dashboard de reparto
+
+La página **ya está en producción** en:
+
+https://dmeza1664-eng.github.io/dashboard-pepes/
+
+Este paquete sirve para republicarla o moverla a otro hosting. No usa SQL ni una API propia: lee Firestore en tiempo real después del login de Firebase.
+
+## Qué hay que publicar
+
+| Archivo | ¿Se sube al hosting? | Para qué |
+|---|---|---|
+| `index.html` | Sí. Es toda la página | Login, consultas y reportes |
+| `SECURITY.md` | No es obligatorio | Aviso de seguridad para el equipo |
+| `tests/dashboard-finance.test.js` | No | Verificar el HTML antes de subir |
+| `referencia/firestore.rules` | No subir a GitHub Pages | Copia de las reglas **ya desplegadas** en Firebase. No las vuelvan a publicar salvo que se pida |
+
+No hace falta `package.json`, servidor Node, Azure SQL ni una API intermedia.
+
+## Quién puede entrar
+
+Estas cuentas:
+
+- `angelogistica@pasteleriapepe.mx` (Admin General, `admin1`)
+- `carloszerme1@pasteleriapepe.mx` (Carlos, `carloszerme1`)
+- `goreti@pasteleriapepe.mx` (Goreti, `goreti`)
+
+Los repartidores pueden seguir usando la app Android. El dashboard los rechaza.
+
+## Cómo publicarla
+
+### Opción A — GitHub Pages (la que ya usa el equipo)
+
+1. Reemplazar `index.html` en el repo `https://github.com/dmeza1664-eng/dashboard-pepes`
+2. Subir a la rama `main`
+3. Esperar 1–2 minutos y abrir la URL de Pages
+4. Si el navegador muestra la versión vieja, recargar sin caché (Ctrl+F5)
+
+### Opción B — Cualquier hosting estático
+
+Subir **solo** `index.html` como página de inicio (raíz del sitio):
+
+- Firebase Hosting
+- Netlify / Vercel (arrastrar la carpeta)
+- IIS / Apache / carpeta de red
+
+Ejemplo local de prueba:
+
+```bash
+npx --yes http-server . -p 4173 -c-1
+```
+
+Abrir `http://127.0.0.1:4173`
+
+### Opción C — No usen SQL
+
+Azure SQL es para la app Android y el puente de sincronización. El dashboard no lee SQL. Publicar scripts SQL no cambia esta página.
+
+## Prueba antes de avisar
+
+```bash
+node tests/dashboard-finance.test.js
+```
+
+Debe imprimir: `Dashboard finance and hardening tests: OK`
+
+Luego entrar con Carlos o Admin General y confirmar que el encabezado llegue a **En vivo** y que se vean nombres de repartidores.
+
+## Qué no tocar
+
+- No reenviar `apiKey` de Firebase como si fuera un secreto. Es pública; el acceso lo dan Auth, claims y reglas.
+- No desplegar `firestore.rules` “por si acaso”. Ya están en el proyecto `cookie-1d48c`.
+- No agregar más cuentas sin cambiar `DASHBOARD_ALLOWED_USER_IDS` en `index.html` y volver a publicar.
