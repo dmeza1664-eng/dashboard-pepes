@@ -1,0 +1,3 @@
+Login, errores (credenciales / sin permiso / desactivada / red), logout, token expirado.
+Frames: 01.01 a 01.08
+No mostrar usuarios de prueba ni PIN en el diseño.

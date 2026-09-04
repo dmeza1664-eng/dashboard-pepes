@@ -1,0 +1,2 @@
+Solo enlazar en prototipo tras login con claim dashboardAccess.
+Frames: 02.01 a 02.05

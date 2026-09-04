@@ -3,13 +3,12 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const dashboardPath = path.join(__dirname, "..", "index.html");
-const html = fs.readFileSync(dashboardPath, "utf8");
-const scriptMatch = html.match(/<script>\s*([\s\S]*?)<\/script>\s*<\/body>/);
-if (!scriptMatch) throw new Error("No se encontro el script principal del dashboard.");
-
+const root = path.join(__dirname, "..");
+const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const css = fs.readFileSync(path.join(root, "dashboard.css"), "utf8");
+const scriptSource = fs.readFileSync(path.join(root, "dashboard.js"), "utf8");
 const initMarker = "document.addEventListener('keydown'";
-const script = scriptMatch[1].slice(0, scriptMatch[1].indexOf(initMarker));
+const script = scriptSource.slice(0, scriptSource.indexOf(initMarker));
 const fields = {
   "f-date-mode": {value: "day"},
   "f-fecha-inicio": {value: ""},
@@ -133,15 +132,25 @@ assert.strictEqual(pendingPayment.pendiente, 18);
 assert.strictEqual(pendingPayment.reconciliado, true);
 
 (async () => {
-  assert.match(html, /setPersistence\(firebase\.auth\.Auth\.Persistence\.SESSION\)/);
-  assert.match(html, /auth\.onIdTokenChanged/);
-  assert.match(html, /getIdTokenResult\(true\)/);
-  assert.match(html, /claims\.dashboardAccess/);
+  assert.match(html, /href="dashboard\.css"/);
+  assert.match(html, /src="dashboard\.js"/);
   assert.match(html, /Content-Security-Policy/);
-  assert.match(html, /\.dashboard-shell\{display:none\}/);
+  assert.match(html, /script-src 'self' https:\/\/cdnjs\.cloudflare\.com https:\/\/www\.gstatic\.com/);
+  assert.doesNotMatch(html, /script-src [^;]*'unsafe-inline'/);
+  assert.doesNotMatch(html, /<style>/);
+  assert.doesNotMatch(html, /onclick=/);
+  assert.doesNotMatch(html, /onchange=/);
+  assert.doesNotMatch(html, /oninput=/);
   assert.doesNotMatch(html, /DASHBOARD_ALLOWED_USER_IDS/);
-  assert.doesNotMatch(html, /onclick="seleccionarFechaConDatos\('\$\{sugerida\}'\)"/);
-  assert.doesNotMatch(html, /\$\{info\.nombre\}<\/div><div class="tm"/);
+  assert.match(css, /\.dashboard-shell\{display:none\}/);
+  assert.match(scriptSource, /setPersistence\(firebase\.auth\.Auth\.Persistence\.SESSION\)/);
+  assert.match(scriptSource, /auth\.onIdTokenChanged/);
+  assert.match(scriptSource, /getIdTokenResult\(true\)/);
+  assert.match(scriptSource, /claims\.dashboardAccess/);
+  assert.match(scriptSource, /function bindDashboardControls/);
+  assert.doesNotMatch(scriptSource, /DASHBOARD_ALLOWED_USER_IDS/);
+  assert.doesNotMatch(scriptSource, /onclick="seleccionarFechaConDatos\('\$\{sugerida\}'\)"/);
+  assert.doesNotMatch(scriptSource, /\$\{info\.nombre\}<\/div><div class="tm"/);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Administrador')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Supervisor')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Contadora')"), true);

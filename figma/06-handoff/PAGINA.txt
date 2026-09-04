@@ -1,0 +1,2 @@
+Publicar index.html, dashboard.css y dashboard.js juntos.
+Un claim dashboardAccess nuevo lo aprueban seguridad + producto.

@@ -1,0 +1,3 @@
+Prioridad ALTA. Cubierta, superficie de ataque, claim dashboardAccess, datos sensibles, prohibido en UI, checklist pre-publicar.
+Frames: 00.00 a 00.05
+El HTML no lista correos. Quien entra lo decide el claim en Firebase Auth.

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Figma · Dashboard Pepes · Seguridad primero</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1e1e1e;--panel:#2c2c2c;--line:#444;--figma:#0d99ff;--high:#ff4d4d;--ok:#14ae5e;--text:#f5f5f5;--muted:#b3b3b3;--art:#0b0d12;--green:#00ff9d;--red:#ff4a6e;--amber:#ffaa00;--blue:#3b9eff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{height:100vh;display:grid;grid-template-columns:220px 1fr 260px;grid-template-rows:48px 1fr;background:var(--bg);color:var(--text);font-family:Outfit,sans-serif;overflow:hidden}
+.top{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line);background:#2a2a2a}
+.top b{font-size:13px}
+.top span{font-size:11px;color:var(--muted);font-family:"JetBrains Mono",monospace}
+.prio{background:rgba(255,77,77,.15);color:#ff8a8a;border:1px solid rgba(255,77,77,.35);padding:3px 8px;border-radius:99px;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.pages{border-right:1px solid var(--line);background:#252525;padding:12px 8px;overflow:auto}
+.pages h2{font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;padding:8px}
+.page-btn{width:100%;text-align:left;border:0;background:transparent;color:var(--text);padding:9px 10px;border-radius:8px;cursor:pointer;font:600 13px Outfit;display:flex;gap:8px;align-items:center}
+.page-btn small{color:var(--muted);font-weight:500}
+.page-btn.act{background:#3a3a3a}
+.page-btn.hot{outline:1px solid rgba(255,77,77,.45)}
+.canvas-wrap{background:#1a1a1a;overflow:auto;padding:28px}
+.canvas{min-width:1100px}
+.page-title{font-size:22px;margin-bottom:6px}
+.page-sub{color:var(--muted);font-size:13px;margin-bottom:22px;max-width:720px}
+.board{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.frame{background:#11141c;border:1px solid #2a3144;border-radius:10px;padding:10px}
+.frame h3{font-family:"JetBrains Mono",monospace;font-size:10px;color:#8b93a7;margin-bottom:8px;letter-spacing:.04em}
+.art{background:#080a0f;border-radius:8px;overflow:hidden;position:relative}
+.art.desk{width:390px;min-height:520px}
+.art.wide{width:720px;min-height:420px}
+.art.phone{width:280px;min-height:520px}
+.login-card{margin:72px 28px 0;background:#121826;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px}
+.brand{display:flex;gap:10px;align-items:center;margin-bottom:18px}
+.mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#00ff9d,#00b36e)}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:10px;letter-spacing:.12em;color:#7a87a8;margin-bottom:6px}
+.fld input,.fake{width:100%;height:38px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:#0c1018;color:#e2e8f8;padding:0 10px}
+.go{width:100%;height:42px;border:0;border-radius:10px;background:#00ff9d;color:#062016;font-weight:800;margin-top:6px}
+.err{margin-top:12px;background:rgba(255,74,110,.12);color:#ff8aa0;border:1px solid rgba(255,74,110,.35);border-radius:8px;padding:10px;font-size:12px}
+.ok{margin-top:12px;color:#00ff9d;font-size:12px}
+.note{padding:16px;font-size:13px;line-height:1.45;color:#d5dceb}
+.note h4{margin-bottom:8px;color:#fff}
+.note ul{margin-left:18px;color:#b8c2d6}
+.check{display:flex;gap:8px;align-items:flex-start;margin:8px 0;font-size:13px}
+.box{width:14px;height:14px;border:1px solid #00ff9d;border-radius:3px;flex:0 0 14px;margin-top:2px}
+.dash-head{height:52px;border-bottom:1px solid #222;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:12px}
+.pills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px}
+.pill{background:#121826;border:1px solid #243;border-radius:10px;padding:10px}
+.pill b{display:block;font-family:"JetBrains Mono",monospace;font-size:16px;color:#00ff9d}
+.right{border-left:1px solid var(--line);background:#252525;padding:14px;overflow:auto;font-size:12px;color:var(--muted)}
+.right h2{color:#fff;font-size:13px;margin-bottom:8px}
+.right code{color:#9cdcfe;font-family:"JetBrains Mono",monospace;font-size:11px}
+.hidden{display:none}
+.proto{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.proto button{border:1px solid #444;background:#333;color:#fff;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="top">
+  <b>Dashboard Pepes · archivo Figma</b>
+  <span class="prio">Prioridad alta · seguridad</span>
+  <span>Páginas = carpetas · frames listos para copiar a Figma</span>
+</div>
+<nav class="pages">
+  <h2>Páginas</h2>
+  <button class="page-btn hot act" data-page="p00">00 Seguridad <small>alta</small></button>
+  <button class="page-btn" data-page="p01">01 Acceso y sesión</button>
+  <button class="page-btn" data-page="p02">02 Dashboard</button>
+  <button class="page-btn" data-page="p03">03 Estados y errores</button>
+  <button class="page-btn" data-page="p04">04 Móvil</button>
+  <button class="page-btn" data-page="p05">05 Componentes</button>
+  <button class="page-btn" data-page="p06">06 Handoff</button>
+</nav>
+<main class="canvas-wrap">
+  <section id="p00" class="canvas">
+    <div class="page-title">00 Seguridad</div>
+    <p class="page-sub">Se revisa primero. Define quién entra, qué no se dibuja y qué debe cumplirse antes de publicar.</p>
+    <div class="board">
+      <div class="frame"><h3>00.00 Cubierta seguridad</h3><div class="art desk"><div class="note"><h4>Dashboard de reparto</h4><p>Cliente estático → Firebase Auth + Firestore. No hay API ni SQL en esta página.</p><p style="margin-top:12px">La <code>apiKey</code> del HTML es identificador público. La protección real es Auth, claims y reglas.</p></div></div></div>
+      <div class="frame"><h3>00.01 Superficie de ataque</h3><div class="art desk"><div class="note"><h4>Qué ve un atacante</h4><ul><li>El JS y el CSS en GitHub Pages</li><li>El claim se valida en el cliente, no es candado de servidor</li><li>Consultas que el navegador ya autenticado puede hacer</li></ul><p style="margin-top:12px">Reglas de Firestore = frontera real.</p></div></div></div>
+      <div class="frame"><h3>00.02 Quién entra</h3><div class="art desk"><div class="note"><h4>Claim dashboardAccess</h4><ul><li>admin1 · Administrador</li><li>carloszerme1 · Administrador</li><li>goreti · Supervisor</li></ul><p style="margin-top:12px">Hoy lo tienen esas tres cuentas. El HTML no lista correos.</p><p style="margin-top:12px;color:#ff8aa0">Sin claim, inactiva o repartidor → 01.04, nunca el dashboard.</p></div></div></div>
+      <div class="frame"><h3>00.03 Datos sensibles</h3><div class="art desk"><div class="note"><h4>Enmascarar en el archivo Figma</h4><ul><li>Usar tiendas y montos ficticios</li><li>No pegar cortes reales ni teléfonos de producción</li><li>Nombres de ejemplo: Tienda Norte, $1,250.00</li></ul></div></div></div>
+      <div class="frame"><h3>00.04 Prohibido en UI</h3><div class="art desk"><div class="note"><h4>Nunca diseñar</h4><ul><li>PIN, hashes, userCredentials</li><li>Tokens o custom claims en pantalla</li><li>Hints de login (“usa admin1 / 0000”)</li><li>Errores técnicos tipo INTERNAL</li></ul></div></div></div>
+      <div class="frame"><h3>00.05 Checklist pre-publicar</h3><div class="art desk"><div class="note"><h4>No publicar si falla uno</h4><div class="check"><i class="box"></i> Dashboard oculto sin sesión</div><div class="check"><i class="box"></i> Sesión de pestaña, no persistencia infinita</div><div class="check"><i class="box"></i> Sin claim dashboardAccess → mensaje de rechazo</div><div class="check"><i class="box"></i> Textos escapados (nombres, teléfonos)</div><div class="check"><i class="box"></i> Se publican HTML + CSS + JS juntos</div></div></div></div>
+    </div>
+  </section>
+
+  <section id="p01" class="canvas hidden">
+    <div class="page-title">01 Acceso y sesión</div>
+    <p class="page-sub">Prototipo: éxito con claim → 02.01 · sin claim → 01.04 · logout → 01.07.</p>
+    <div class="board">
+      <div class="frame"><h3>01.01 Login vacío</h3><div class="art desk"><div class="login-card"><div class="brand"><div class="mark"></div><div><b>Pastelería Pepes</b><div style="color:#7a87a8;font-size:12px">Acceso supervisor / encargado</div></div></div><div class="fld"><label>CORREO</label><input placeholder=""></div><div class="fld"><label>CONTRASEÑA</label><input type="password"></div><button class="go">Entrar al dashboard</button></div></div></div>
+      <div class="frame"><h3>01.02 Login cargando</h3><div class="art desk"><div class="login-card"><div class="brand"><div class="mark"></div><div><b>Pastelería Pepes</b></div></div><div class="fld"><label>CORREO</label><div class="fake"></div></div><div class="fld"><label>CONTRASEÑA</label><div class="fake"></div></div><button class="go" style="opacity:.5">Verificando…</button></div></div></div>
+      <div class="frame"><h3>01.03 Error credenciales</h3><div class="art desk"><div class="login-card"><div class="brand"><div class="mark"></div><div><b>Pastelería Pepes</b></div></div><div class="fld"><label>CORREO</label><div class="fake"></div></div><div class="fld"><label>CONTRASEÑA</label><div class="fake"></div></div><button class="go">Entrar al dashboard</button><div class="err">Usuario o contraseña incorrectos</div></div></div></div>
+      <div class="frame"><h3>01.04 Error sin permiso</h3><div class="art desk"><div class="login-card"><div class="brand"><div class="mark"></div><div><b>Pastelería Pepes</b></div></div><div class="fld"><label>CORREO</label><div class="fake"></div></div><div class="fld"><label>CONTRASEÑA</label><div class="fake"></div></div><button class="go">Entrar al dashboard</button><div class="err">Esta cuenta no tiene acceso al dashboard.</div></div></div></div>
+      <div class="frame"><h3>01.05 Error desactivada</h3><div class="art desk"><div class="login-card"><div class="err" style="margin-top:80px">La cuenta está desactivada.</div></div></div></div>
+      <div class="frame"><h3>01.06 Error de red</h3><div class="art desk"><div class="login-card"><div class="err" style="margin-top:80px">No se pudo conectar con Firebase. Revisa tu conexión.</div></div></div></div>
+      <div class="frame"><h3>01.07 Sesión cerrada</h3><div class="art desk"><div class="login-card"><div class="note"><h4>Logout</h4><p>Shell oculto. Listeners cancelados. Sin cifras residuales.</p></div></div></div></div>
+      <div class="frame"><h3>01.08 Token expirado</h3><div class="art desk"><div class="login-card"><div class="note"><h4>Sesión caducada</h4><p>Volver a 01.01. No dejar tablas visibles detrás del login.</p></div></div></div></div>
+    </div>
+  </section>
+
+  <section id="p02" class="canvas hidden">
+    <div class="page-title">02 Dashboard</div>
+    <p class="page-sub">Solo visible con dashboardAccess. Datos de ejemplo, no de producción.</p>
+    <div class="board">
+      <div class="frame"><h3>02.01 Resumen en vivo</h3><div class="art wide"><div class="dash-head"><b>Pastelería Pepes</b><span style="color:#00ff9d">● En vivo 14:02</span></div><div class="pills"><div class="pill">Vendido<b>$12,480</b></div><div class="pill">Cobrado<b>$11,200</b></div><div class="pill">Pendiente<b>$1,280</b></div></div></div></div>
+      <div class="frame"><h3>02.02 Preliminar vs corte</h3><div class="art wide"><div class="note"><h4>Finanzas</h4><p><span style="color:#ffaa00">Preliminar</span> mientras no hay corte cerrado. <span style="color:#00ff9d">Definitivo</span> solo con corte.</p></div></div></div>
+      <div class="frame"><h3>02.04 Exportar listo</h3><div class="art desk"><div class="note"><h4>⬇ Exportar Excel</h4><p class="ok">Activo: snapshot completo, sin colecciones bloqueantes.</p></div></div></div>
+      <div class="frame"><h3>02.05 Exportar bloqueado</h3><div class="art desk"><div class="note"><h4>⬇ Exportar Excel</h4><p style="color:#ff8aa0">Disabled: datos incompletos o actualización parcial.</p></div></div></div>
+    </div>
+  </section>
+
+  <section id="p03" class="canvas hidden">
+    <div class="page-title">03 Estados y errores</div>
+    <div class="board">
+      <div class="frame"><h3>03.01 Cargando</h3><div class="art wide"><div class="note">Skeletons. Usuario ya autenticado.</div></div></div>
+      <div class="frame"><h3>03.02 Vacío</h3><div class="art wide"><div class="note">Hay datos en Firebase, pero no en este rango.</div></div></div>
+      <div class="frame"><h3>03.03 Parcial</h3><div class="art wide"><div class="err">Actualización parcial. No se pudo escuchar: visits.</div></div></div>
+      <div class="frame"><h3>03.04 Catálogo limitado</h3><div class="art wide"><div class="err">Cifras completas, pero sin acceso a users; se muestran identificadores en lugar de nombres.</div></div></div>
+      <div class="frame"><h3>03.05 Rango inválido</h3><div class="art wide"><div class="err">El rango máximo es de 31 días.</div></div></div>
+    </div>
+  </section>
+
+  <section id="p04" class="canvas hidden">
+    <div class="page-title">04 Móvil</div>
+    <p class="page-sub">390px. Login y rechazo de acceso son obligatorios.</p>
+    <div class="board">
+      <div class="frame"><h3>04.01 Login</h3><div class="art phone"><div class="login-card" style="margin:40px 16px"><div class="brand"><div class="mark"></div><b>Pepes</b></div><div class="fld"><label>CORREO</label><input></div><div class="fld"><label>CONTRASEÑA</label><input type="password"></div><button class="go">Entrar</button></div></div></div>
+      <div class="frame"><h3>04.02 Sin acceso</h3><div class="art phone"><div class="login-card" style="margin:40px 16px"><button class="go">Entrar</button><div class="err">Esta cuenta no tiene acceso al dashboard.</div></div></div></div>
+    </div>
+  </section>
+
+  <section id="p05" class="canvas hidden">
+    <div class="page-title">05 Componentes</div>
+    <div class="board">
+      <div class="frame"><h3>Password</h3><div class="art desk"><div class="login-card"><div class="fld"><label>CONTRASEÑA</label><input type="password" value="••••••••"></div></div></div></div>
+      <div class="frame"><h3>Alerta segura</h3><div class="art desk"><div class="login-card"><div class="err">Usuario o contraseña incorrectos</div><p class="note">Sin INTERNAL, sin stack, sin “usuario no existe”.</p></div></div></div>
+      <div class="frame"><h3>Export states</h3><div class="art desk"><div class="note"><p>disabled / ready</p><p style="margin-top:10px"><span class="prio">disabled</span> &nbsp; <span style="color:#00ff9d">ready</span></p></div></div></div>
+    </div>
+  </section>
+
+  <section id="p06" class="canvas hidden">
+    <div class="page-title">06 Handoff</div>
+    <div class="board">
+      <div class="frame"><h3>06.01 Publicar</h3><div class="art wide"><div class="note"><h4>index.html + dashboard.css + dashboard.js</h4><p>GitHub Pages · main. Los tres archivos juntos. No SQL. No redeploy de reglas salvo pedido.</p><p style="margin-top:12px">Un usuario nuevo solo entra si seguridad + producto le ponen el claim dashboardAccess.</p></div></div></div>
+    </div>
+  </section>
+</main>
+<aside class="right">
+  <h2>Inspección</h2>
+  <p>Este HTML <strong>es</strong> el archivo Figma del proyecto: mismas páginas y mismos códigos de frame.</p>
+  <p style="margin:12px 0">Ábrelo en el navegador. En Figma: crea las 7 páginas y captura cada frame (`00.00`, `01.04`…).</p>
+  <p>Prototipo obligatorio:</p>
+  <p><code>01.01 → 02.01</code> con claim</p>
+  <p><code>01.01 → 01.04</code> sin claim</p>
+  <p><code>02.01 → 01.07</code> logout</p>
+</aside>
+<script>
+document.querySelectorAll(".page-btn").forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll(".page-btn").forEach(b=>b.classList.remove("act"));
+    btn.classList.add("act");
+    document.querySelectorAll("main .canvas").forEach(p=>p.classList.add("hidden"));
+    document.getElementById(btn.dataset.page).classList.remove("hidden");
+  };
+});
+</script>
+</body>
+</html>
