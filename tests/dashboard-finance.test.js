@@ -135,17 +135,18 @@ assert.strictEqual(pendingPayment.reconciliado, true);
 (async () => {
   assert.match(html, /setPersistence\(firebase\.auth\.Auth\.Persistence\.SESSION\)/);
   assert.match(html, /auth\.onIdTokenChanged/);
+  assert.match(html, /getIdTokenResult\(true\)/);
+  assert.match(html, /claims\.dashboardAccess/);
   assert.match(html, /Content-Security-Policy/);
   assert.match(html, /\.dashboard-shell\{display:none\}/);
+  assert.doesNotMatch(html, /DASHBOARD_ALLOWED_USER_IDS/);
   assert.doesNotMatch(html, /onclick="seleccionarFechaConDatos\('\$\{sugerida\}'\)"/);
   assert.doesNotMatch(html, /\$\{info\.nombre\}<\/div><div class="tm"/);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Administrador')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Supervisor')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Contadora')"), true);
   assert.strictEqual(evaluate("DASHBOARD_ALLOWED_ROLES.has('Repartidor')"), false);
-  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_USER_IDS.has('admin1')"), true);
-  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_USER_IDS.has('carloszerme1')"), true);
-  assert.strictEqual(evaluate("DASHBOARD_ALLOWED_USER_IDS.has('goreti')"), true);
+  assert.deepStrictEqual(evaluate("idsUsuariosVisibles({visits:[{repartidorId:'israel'}],routeInventories:[],cashCuts:[{repartidorId:'rosa'}],dailyStoreAssignments:[]},'goreti').sort()"), ["goreti", "israel", "rosa"]);
 
   fields["f-date-mode"].value = "range";
   fields["f-fecha-inicio"].value = "2026-07-02";
@@ -169,7 +170,7 @@ assert.strictEqual(pendingPayment.reconciliado, true);
   `, context);
   const allowed = await vm.runInContext(`validateDashboardAccess({
     uid:'auth-1',
-    getIdTokenResult:async()=>({claims:{userId:'admin1',role:'Administrador'}})
+    getIdTokenResult:async()=>({claims:{userId:'admin1',role:'Administrador',dashboardAccess:true}})
   })`, context);
   assert.strictEqual(allowed.role, "Administrador");
 
@@ -181,9 +182,17 @@ assert.strictEqual(pendingPayment.reconciliado, true);
   `, context);
   const goreti = await vm.runInContext(`validateDashboardAccess({
     uid:'auth-1',
-    getIdTokenResult:async()=>({claims:{userId:'goreti',role:'Supervisor'}})
+    getIdTokenResult:async()=>({claims:{userId:'goreti',role:'Supervisor',dashboardAccess:true}})
   })`, context);
   assert.strictEqual(goreti.role, "Supervisor");
+
+  await assert.rejects(
+    vm.runInContext(`validateDashboardAccess({
+      uid:'auth-1',
+      getIdTokenResult:async()=>({claims:{userId:'admin1',role:'Administrador'}})
+    })`, context),
+    /no tiene acceso/i
+  );
 
   vm.runInContext(`
     db={collection:()=>({doc:()=>({get:async()=>({
@@ -208,7 +217,7 @@ assert.strictEqual(pendingPayment.reconciliado, true);
   await assert.rejects(
     vm.runInContext(`validateDashboardAccess({
       uid:'auth-1',
-      getIdTokenResult:async()=>({claims:{userId:'admin1',role:'Administrador'}})
+      getIdTokenResult:async()=>({claims:{userId:'admin1',role:'Administrador',dashboardAccess:true}})
     })`, context),
     /desactivada/i
   );
@@ -217,10 +226,11 @@ assert.strictEqual(pendingPayment.reconciliado, true);
     let count=0;
     realtimeUnsubscribers=[()=>count++,()=>count++];
     realtimeDetailUnsubscribers=[()=>count++];
+    realtimeUserUnsubscribers=[()=>count++];
     detenerActualizacionTiempoReal();
-    return {count,live:realtimeUnsubscribers.length,details:realtimeDetailUnsubscribers.length};
+    return {count,live:realtimeUnsubscribers.length,details:realtimeDetailUnsubscribers.length,users:realtimeUserUnsubscribers.length};
   })()`);
-  assert.deepStrictEqual(unsubscribed, {count: 3, live: 0, details: 0});
+  assert.deepStrictEqual(unsubscribed, {count: 4, live: 0, details: 0, users: 0});
 
   assert.deepStrictEqual(evaluate(`(() => {
     realtimeErrors=new Set(['users']);

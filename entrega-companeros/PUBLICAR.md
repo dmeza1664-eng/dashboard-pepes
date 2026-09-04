@@ -19,7 +19,7 @@ No hace falta `package.json`, servidor Node, Azure SQL ni una API intermedia.
 
 ## Quién puede entrar
 
-Estas cuentas:
+El HTML ya no lista correos. Firebase Auth lleva el claim `dashboardAccess`. Hoy lo deben tener:
 
 - `angelogistica@pasteleriapepe.mx` (Admin General, `admin1`)
 - `carloszerme1@pasteleriapepe.mx` (Carlos, `carloszerme1`)
@@ -70,4 +70,4 @@ Luego entrar con Carlos o Admin General y confirmar que el encabezado llegue a *
 
 - No reenviar `apiKey` de Firebase como si fuera un secreto. Es pública; el acceso lo dan Auth, claims y reglas.
 - No desplegar `firestore.rules` “por si acaso”. Ya están en el proyecto `cookie-1d48c`.
-- No agregar más cuentas sin cambiar `DASHBOARD_ALLOWED_USER_IDS` en `index.html` y volver a publicar.
+- No agregar más cuentas sin ponerles el claim `dashboardAccess: true` en Firebase Auth. El HTML ya no lleva lista de usuarios.

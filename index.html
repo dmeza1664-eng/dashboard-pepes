@@ -480,7 +480,6 @@ const DASHBOARD_VERSION='1.2.1-preview';
 const DEFAULT_PRODUCT_PRICE=17.50;
 const MONEY_TOLERANCE=0.01;
 const DASHBOARD_ALLOWED_ROLES=new Set(['Administrador','Supervisor','Contadora']);
-const DASHBOARD_ALLOWED_USER_IDS=new Set(['admin1','carloszerme1','goreti']);
 const MAX_QUERY_RANGE_DAYS=31;
 const FIRESTORE_IN_LIMIT=30;
 const PNOM={GC001:'Galletas Chocolate',GA002:'Galletas Ate',GN003:'Galletas Nuez',GAL004:'Galletas Alfajor',P001:'Galletas Chocolate',P002:'Galletas Ate',P003:'Galletas Nuez',P004:'Galletas Alfajor'};
@@ -682,6 +681,8 @@ const FIRESTORE_LIVE_COLLECTIONS=[
 const DISPLAY_ONLY_COLLECTIONS=new Set(['users']);
 let realtimeUnsubscribers=[];
 let realtimeDetailUnsubscribers=[];
+let realtimeUserUnsubscribers=[];
+let realtimeUserKey='';
 let realtimeData={};
 let realtimeReady=new Set();
 let realtimeErrors=new Set();
@@ -714,16 +715,17 @@ function dashboardAccessError(code,message){
   return error;
 }
 async function validateDashboardAccess(user){
-  const tokenResult=await user.getIdTokenResult();
+  const tokenResult=await user.getIdTokenResult(true);
   const userId=String(tokenResult.claims.userId||'').trim();
   if(!userId)throw dashboardAccessError('dashboard/missing-claim','La cuenta no tiene un perfil operativo vinculado.');
+  if(tokenResult.claims.dashboardAccess!==true)throw dashboardAccessError('dashboard/forbidden','Esta cuenta no tiene acceso al dashboard.');
   const snapshot=await db.collection('users').doc(userId).get();
   if(!snapshot.exists)throw dashboardAccessError('dashboard/missing-profile','No existe el perfil operativo de esta cuenta.');
   const profile={userId,...snapshot.data()};
   if(profile.isActive!==true||profile.deletedAt)throw dashboardAccessError('dashboard/inactive','La cuenta está desactivada.');
   if(profile.authUid&&profile.authUid!==user.uid)throw dashboardAccessError('dashboard/identity-mismatch','La cuenta no coincide con el perfil operativo.');
   const role=String(profile.role||tokenResult.claims.role||'').trim();
-  if(!DASHBOARD_ALLOWED_USER_IDS.has(userId)||!DASHBOARD_ALLOWED_ROLES.has(role))throw dashboardAccessError('dashboard/forbidden','Esta cuenta no tiene acceso al dashboard.');
+  if(!DASHBOARD_ALLOWED_ROLES.has(role))throw dashboardAccessError('dashboard/forbidden','Esta cuenta no tiene acceso al dashboard.');
   if(tokenResult.claims.role&&tokenResult.claims.role!==role)throw dashboardAccessError('dashboard/role-mismatch','El rol de la sesión está desactualizado. Cierra sesión e intenta de nuevo.');
   return {...profile,role};
 }
@@ -1147,11 +1149,25 @@ function aplicarDatosRemotos(datos,{tiempoReal=false}={}){
   }
 }
 
+function idsUsuariosVisibles(datos,selfId){
+  const ids=new Set();
+  if(selfId)ids.add(String(selfId).trim());
+  const rows=[...(datos.visits||[]),...(datos.routeInventories||[]),...(datos.cashCuts||[]),...(datos.dailyStoreAssignments||[])];
+  rows.forEach(o=>{
+    const id=val(o,'repartidorId','driverId','userId','REPARTIDOR_ID','createdBy');
+    if(id)ids.add(String(id).trim());
+  });
+  return [...ids].filter(Boolean);
+}
+
 function detenerActualizacionTiempoReal(){
   realtimeUnsubscribers.forEach(unsubscribe=>{try{unsubscribe()}catch(e){console.warn('No se pudo cerrar un listener de Firestore',e)}});
   realtimeDetailUnsubscribers.forEach(unsubscribe=>{try{unsubscribe()}catch(e){console.warn('No se pudo cerrar un listener de detalles',e)}});
+  realtimeUserUnsubscribers.forEach(unsubscribe=>{try{unsubscribe()}catch(e){console.warn('No se pudo cerrar un listener de usuarios',e)}});
   realtimeUnsubscribers=[];
   realtimeDetailUnsubscribers=[];
+  realtimeUserUnsubscribers=[];
+  realtimeUserKey='';
   realtimeData={};
   realtimeReady=new Set();
   realtimeErrors=new Set();
@@ -1214,6 +1230,50 @@ function iniciarDetallesTiempoReal(visits,generation){
   });
 }
 
+function iniciarUsuariosTiempoReal(generation){
+  const ids=idsUsuariosVisibles(realtimeData,dashboardProfile&&dashboardProfile.userId);
+  const key=ids.slice().sort().join('|');
+  if(key===realtimeUserKey&&realtimeReady.has('users'))return;
+  realtimeUserUnsubscribers.forEach(unsubscribe=>{try{unsubscribe()}catch(_){}});
+  realtimeUserUnsubscribers=[];
+  realtimeUserKey=key;
+  realtimeData.users=[];
+  realtimeReady.delete('users');
+  realtimeErrors.delete('users');
+  if(!ids.length){
+    realtimeReady.add('users');
+    programarAplicacionTiempoReal();
+    return;
+  }
+  const rowsById=new Map();
+  const readyIds=new Set();
+  const failedIds=new Set();
+  ids.forEach(userId=>{
+    const unsubscribe=db.collection('users').doc(userId).onSnapshot(snapshot=>{
+      if(generation!==realtimeGeneration)return;
+      if(snapshot.exists)rowsById.set(userId,{id:snapshot.id,...snapshot.data()});
+      else rowsById.delete(userId);
+      readyIds.add(userId);
+      failedIds.delete(userId);
+      if(!failedIds.size)realtimeErrors.delete('users');
+      realtimeData.users=[...rowsById.values()];
+      if(readyIds.size===ids.length)realtimeReady.add('users');
+      programarAplicacionTiempoReal();
+    },error=>{
+      if(generation!==realtimeGeneration)return;
+      console.warn('Error en actualización Firestore (users)',error);
+      rowsById.delete(userId);
+      readyIds.add(userId);
+      failedIds.add(userId);
+      realtimeErrors.add('users');
+      realtimeData.users=[...rowsById.values()];
+      if(readyIds.size===ids.length)realtimeReady.add('users');
+      programarAplicacionTiempoReal();
+    });
+    realtimeUserUnsubscribers.push(unsubscribe);
+  });
+}
+
 function coleccionesBloqueantes(){
   return [...realtimeErrors].filter(nombre=>!DISPLAY_ONLY_COLLECTIONS.has(nombre));
 }
@@ -1265,15 +1325,15 @@ function iniciarActualizacionTiempoReal(){
     actualizarEstadoDatos('⚠ Rango inválido',error.message);
     return;
   }
-  registrarListener('routeInventories',consultaPorFecha('routeInventories',range.inicio,range.fin),generation);
-  registrarListener('cashCuts',consultaPorFecha('cashCuts',range.inicio,range.fin),generation);
-  registrarListener('dailyStoreAssignments',consultaPorFecha('dailyStoreAssignments',range.inicio,range.fin),generation);
+  const refrescarUsuarios=()=>iniciarUsuariosTiempoReal(generation);
+  registrarListener('routeInventories',consultaPorFecha('routeInventories',range.inicio,range.fin),generation,{onRows:refrescarUsuarios});
+  registrarListener('cashCuts',consultaPorFecha('cashCuts',range.inicio,range.fin),generation,{onRows:refrescarUsuarios});
+  registrarListener('dailyStoreAssignments',consultaPorFecha('dailyStoreAssignments',range.inicio,range.fin),generation,{onRows:refrescarUsuarios});
   registrarListener('visits',consultaPorFecha('visits',range.inicio,range.fin),generation,{
-    onRows:rows=>iniciarDetallesTiempoReal(rows,generation)
+    onRows:rows=>{iniciarDetallesTiempoReal(rows,generation);refrescarUsuarios()}
   });
   registrarListener('stores',db.collection('stores'),generation);
   registrarListener('products',db.collection('products'),generation);
-  registrarListener('users',db.collection('users'),generation);
 }
 
 async function cargarDatos(){
