@@ -131,6 +131,35 @@ assert.strictEqual(pendingPayment.efectivo, 0);
 assert.strictEqual(pendingPayment.pendiente, 18);
 assert.strictEqual(pendingPayment.reconciliado, true);
 
+assert.strictEqual(evaluate("esVisitaPendiente({ESTADO:'Pendiente'})"), true);
+assert.strictEqual(evaluate("esVisitaPendiente({ESTADO:'Visitada'})"), false);
+assert.strictEqual(evaluate("esVisitaPendiente({ESTADO:'Cerrada'})"), false);
+assert.deepStrictEqual(evaluate("idsConsultaDetalles([{visitId:'date_rep_r1_s1',id:'date_rep_r1_s1'},{visitId:'old-id',id:'date_rep_r1_s2'}]).sort()"), [
+  "date_rep_r1_s1",
+  "date_rep_r1_s2",
+  "old-id"
+]);
+const emptyVisitSplit = evaluate(`(() => {
+  const visits=normalizeVisits([
+    {visitId:'p1',date:'2026-09-03',routeId:'R1',storeId:'T1',repartidorId:'rep1',state:'Pendiente'},
+    {visitId:'v1',date:'2026-09-03',routeId:'R1',storeId:'T2',repartidorId:'rep1',state:'Visitada'}
+  ]);
+  return clasificarVisitasSinDetalle(visits,[]);
+})()`);
+assert.strictEqual(emptyVisitSplit.pendiente.length, 1);
+assert.strictEqual(emptyVisitSplit.capturadas.length, 1);
+assert.strictEqual(emptyVisitSplit.pendiente[0].VISITA_ID, "p1");
+assert.strictEqual(emptyVisitSplit.capturadas[0].VISITA_ID, "v1");
+const pendingOnlyAlerts = evaluate(`(() => {
+  const visits=normalizeVisits([
+    {visitId:'p1',date:'2026-09-03',routeId:'R1',storeId:'T1',repartidorId:'rep1',state:'Pendiente'}
+  ]);
+  const grupos=buildFinancialGroups({visits,details:[],inventory:[],cuts:[]},{inicio:'2026-09-03',fin:'2026-09-03'});
+  return collectDataAlerts(grupos,[]);
+})()`);
+assert.strictEqual(pendingOnlyAlerts.some(alert => alert.title === "Visitas de programación"), true);
+assert.strictEqual(pendingOnlyAlerts.some(alert => alert.title === "Visitas sin detalles"), false);
+
 (async () => {
   assert.match(html, /href="dashboard\.css"/);
   assert.match(html, /src="dashboard\.js"/);

@@ -14,7 +14,7 @@ const FIREBASE_CONFIG = {
   measurementId: "G-H9RNTLJH7D"
 };
 
-const DASHBOARD_VERSION='1.2.2-preview';
+const DASHBOARD_VERSION='1.2.3-preview';
 const DEFAULT_PRODUCT_PRICE=17.50;
 const MONEY_TOLERANCE=0.01;
 const DASHBOARD_ALLOWED_ROLES=new Set(['Administrador','Supervisor','Contadora']);
@@ -61,6 +61,31 @@ const fd=s=>{if(!s)return'—';const m=String(s).match(/(\d{4})-(\d{2})-(\d{2})/
 const hoy=()=>{const n=new Date();return `${n.getFullYear()}-${pad2(n.getMonth()+1)}-${pad2(n.getDate())}`};
 const g=id=>document.getElementById(id);
 const val=(o,...ks)=>{for(const k of ks){if(o&&o[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k]}return ''};
+function esVisitaPendiente(v){
+  const estado=String((v&& (v.ESTADO||v.state||v.status||v.estado))||'').trim().toLowerCase();
+  return !estado||estado==='pendiente';
+}
+function idsConsultaDetalles(visits){
+  const ids=new Set();
+  (visits||[]).forEach(o=>{
+    const field=val(o,'visitId','VISITA_ID');
+    const docId=val(o,'id');
+    if(field)ids.add(String(field));
+    if(docId)ids.add(String(docId));
+  });
+  return [...ids];
+}
+function clasificarVisitasSinDetalle(visits,details){
+  const conDetalle=new Set((details||[]).map(d=>d.VISITA_ID||d.visitId).filter(Boolean));
+  const vacias=(visits||[]).filter(v=>{
+    const id=v&&(v.VISITA_ID||v.visitId);
+    return id&&!conDetalle.has(id);
+  });
+  return {
+    pendiente:vacias.filter(esVisitaPendiente),
+    capturadas:vacias.filter(v=>!esVisitaPendiente(v))
+  };
+}
 const num=(o,...ks)=>money(val(o,...ks));
 const boolSi=v=>v===true||v==='true'||v==='1'||v===1||String(v||'').toLowerCase()==='sí'||String(v||'').toLowerCase()==='si';
 function formatHora(value){
@@ -733,7 +758,7 @@ function iniciarDetallesTiempoReal(visits,generation){
   realtimeData.visitDetails=[];
   realtimeReady.delete('visitDetails');
   realtimeErrors.delete('visitDetails');
-  const ids=[...new Set((visits||[]).map(o=>val(o,'visitId','VISITA_ID','id')).filter(Boolean))];
+  const ids=idsConsultaDetalles(visits);
   const batches=dividirEnLotes(ids,FIRESTORE_IN_LIMIT);
   if(!batches.length){
     realtimeReady.add('visitDetails');
@@ -1023,6 +1048,9 @@ function collectDataAlerts(grupos,details){
   const visitIds=new Set(dV.map(v=>v.VISITA_ID));
   const orphanDetails=dD.filter(d=>d.VISITA_ID&&!visitIds.has(d.VISITA_ID));
   if(orphanDetails.length)alerts.push({level:'critical',title:'Detalles sin visita',message:`${orphanDetails.length} detalle${orphanDetails.length===1?'':'s'} no tiene una visita padre asociada.`});
+  const vacias=clasificarVisitasSinDetalle((grupos||[]).flatMap(gr=>gr.visitas||[]),details);
+  if(vacias.pendiente.length)alerts.push({level:'info',title:'Visitas de programación',message:`${vacias.pendiente.length} visita${vacias.pendiente.length===1?'':'s'} Pendiente sin venta. La app las crea al cargar la ruta; no son capturas.`});
+  if(vacias.capturadas.length)alerts.push({level:'critical',title:'Visitas sin detalles',message:`${vacias.capturadas.length} visita${vacias.capturadas.length===1?'':'s'} marcada${vacias.capturadas.length===1?'':'s'} como realizada no tiene visitDetails. Revisa sync del teléfono.`});
   return alerts;
 }
 
@@ -1172,7 +1200,8 @@ function renderizar(){
   g('m-f').textContent=fp(pF);g('m-fs').textContent=`${tFin} paq`;
   g('m-d').textContent=tDev;g('m-ds').textContent=fp(devValue)+' valor';
   g('m-pend').textContent=fp(tPend);g('m-pends').textContent=nTiendasPend?`${nTiendasPend} tienda${nTiendasPend>1?'s':''} sin pagar`:'todo cobrado';
-  g('m-a').textContent=pct+'%';g('m-as').textContent=`${vIds.size} tiendas`;
+  const vIdsVisitadas=new Set(vis.filter(v=>!esVisitaPendiente(v)).map(v=>v.VISITA_ID));
+  g('m-a').textContent=pct+'%';g('m-as').textContent=`${vIdsVisitadas.size} tiendas`;
   renderEstadoFinanciero(grupos);
   renderDataAlerts(grupos,det);
   actualizarEstadoFuente(grupos,det);
@@ -1230,7 +1259,7 @@ function renderTiendasPendientes(rf,inicio,fin,vIdsVisitadas){
   // Tiendas asignadas a esa ruta — sacarlas del array dRT (06_Ruta_Tiendas)
   const tiendasRuta=(dRT||[]).filter(rt=>rt.RUTA_ID===rutaTarget).map(rt=>rt.TIENDA_ID);
   // Saber qué tiendas ya tienen visita hoy
-  const tiendasVisitadas=new Set(dV.filter(v=>fechaEnRango(v.FECHA,inicio,fin)&&v.RUTA_ID===rutaTarget).map(v=>v.TIENDA_ID));
+  const tiendasVisitadas=new Set(dV.filter(v=>fechaEnRango(v.FECHA,inicio,fin)&&v.RUTA_ID===rutaTarget&&!esVisitaPendiente(v)).map(v=>v.TIENDA_ID));
   const pendientes=tiendasRuta.filter(tid=>!tiendasVisitadas.has(tid));
   g('pend-ct').textContent=`${pendientes.length} de ${tiendasRuta.length} pendientes · ${rutaTarget}`;
   if(!pendientes.length){g('e-pend').style.display='block';g('e-pend').textContent='Todas las tiendas visitadas ✓';return}
